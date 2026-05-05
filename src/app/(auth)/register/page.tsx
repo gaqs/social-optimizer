@@ -94,7 +94,7 @@ export default function Register() {
                                     <Input label="Contraseña" type="password" name="password" placeholder="" required/>
                                     <div className="text-sm">La contraseña debe tener un minimo de 8 caracteres</div>
 
-                                    <Button type="submit" className="mt-8 w-full font-bold" variant="primary">Ingresar</Button>
+                                    <Button type="submit" className="mt-8 w-full font-bold" variant="primary">Registrar</Button>
 
                                     <div className="flex flex-col text-center gap-5 mt-5">
                                         <div>Ya tienes una cuenta? <Link href="/auth/register" className="font-bold text-indigo-600">Inicia sesión</Link></div>

@@ -6,7 +6,7 @@ def exportar_log(desde="2026-01-01", archivo_salida="cambios.txt"):
     """
     try:
         log = subprocess.check_output(
-            ["git", "diff", "HEAD"],
+            ["git", "show"],
             text=True,
             errors="ignore"
         )
