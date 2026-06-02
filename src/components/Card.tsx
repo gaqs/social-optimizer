@@ -33,7 +33,7 @@ export default function Card( { children, mouseOver = false, className }: CardPr
                 <div className="pointer-events-none blur-xl bg-gradient-to-r from-blue-400 via-indigo-500 to-purple-500 size-60 absolute z-0 transition-opacity duration-300"
                     style={{ top: position.y - 120, left: position.x - 120,}}  />
             )}
-            <div className="relative z-10 bg-white h-full w-full rounded-[10px] p-5"> 
+            <div className="relative z-10 w-full rounded-[10px] p-5"> 
                 { children }
             </div>
             

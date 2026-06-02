@@ -16,9 +16,9 @@ const variantStyles: Record<Variant, string> = {
     border_white: "bg-transparent text-white-600 transition-all hover:bg-white hover:text-indigo-600 hover:scale-103 shadow-md border-1 border-white"
 }
 
-export default function Button({children, isLoading = false, loadingText = "Cargando...", variant = "primary", disabled, className = "", ...props}: ButtonProps){
+export default function Button({children, isLoading = false, loadingText = "Cargando...", variant = "primary", disabled, className = "", type = "button", ...props}: ButtonProps){
     return(
-        <button type="button" disabled={isLoading || disabled} {...props} className={`cursor-pointer px-6 py-3 rounded-2xl flex items-center justify-center gap-2
+        <button type={type} disabled={isLoading || disabled} {...props} className={`cursor-pointer px-6 py-3 rounded-2xl flex items-center justify-center gap-2
         disabled:opacity-50 disabled:cursor-not-allowed ${variantStyles[variant]} ${className}`}>
             {isLoading && ( <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> )}
             {isLoading ? loadingText : children}

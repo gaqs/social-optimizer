@@ -1,12 +1,12 @@
 import subprocess
 
-def exportar_log(desde="2026-01-01", archivo_salida="cambios.txt"):
+def exportar_log(desde="2026-05-01", archivo_salida="cambios.txt"):
     """
     Exporta el git log con parches (-p) desde una fecha dada a un archivo de texto.
     """
     try:
         log = subprocess.check_output(
-            ["git", "show"],
+            ["git", "diff"],
             text=True,
             errors="ignore"
         )

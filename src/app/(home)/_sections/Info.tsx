@@ -1,6 +1,6 @@
 import Card from "@/components/Card";
 
-import { Earth, Store, Users, CircleCheck } from "lucide-react";
+import { Earth, Store, Users } from "lucide-react";
 
 export default function Info(){
     return(

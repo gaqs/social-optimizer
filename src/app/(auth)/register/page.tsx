@@ -14,30 +14,47 @@ import Button from "@/components/Button";
 
 import { FilePenLine, ChartColumnBig } from "lucide-react";
 
+import { checkEmailExists } from "@services/register";
+
 export default function Register() {
 
     const router = useRouter();
     const [error, setError] = useState<string | null>(null)
+    const [loading, setLoading] = useState(false);
 
     async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>){
         e.preventDefault();
         setError(null)
-        const formData = new FormData(e.currentTarget);
+        setLoading(true);
 
-        const {data, error} = await authClient.signUp.email({
+        const formData = new FormData(e.currentTarget);
+        //verificar si el correo esta previamente registrado
+        const exists = await checkEmailExists(formData.get('email') as string);
+        if(exists){
+            setError("Este correo ya se encuentra registrado.");
+            setLoading(false);
+            return;
+        }
+        
+        await authClient.signUp.email({
             email: formData.get('email') as string,
             password: formData.get('password') as string,
-            name: formData.get('name') as string
+            name: formData.get('name') as string,
+            callbackURL: '/verify-email?callback=true',
+        },{
+            onRequest: () => {
+                sessionStorage.setItem('pendingEmail', formData.get('email') as string);
+            },
+            onSuccess: () => {
+                router.push('/verify-email');
+            },
+            onError: (ctx) => {
+                setLoading(false);
+                setError(ctx.error.message ?? 'Error al registrarse')
+                return;
+            }
         })
-
-        if(error){
-            setError(error.message ?? 'Error al registrarse')
-            return
-        }
-        console.log(data.user);
-        //router.push('/verify-email');
     }
-
 
     return(
         <>
@@ -94,10 +111,10 @@ export default function Register() {
                                     <Input label="Contraseña" type="password" name="password" placeholder="" required/>
                                     <div className="text-sm">La contraseña debe tener un minimo de 8 caracteres</div>
 
-                                    <Button type="submit" className="mt-8 w-full font-bold" variant="primary">Registrar</Button>
+                                    <Button type="submit" className="mt-8 w-full font-bold" variant="primary" isLoading={loading}>Registrar</Button>
 
                                     <div className="flex flex-col text-center gap-5 mt-5">
-                                        <div>Ya tienes una cuenta? <Link href="/auth/register" className="font-bold text-indigo-600">Inicia sesión</Link></div>
+                                        <div>Ya tienes una cuenta? <Link href="/login" className="font-bold text-indigo-600">Inicia sesión</Link></div>
                                     </div>
                                 </form>
                             </Card>

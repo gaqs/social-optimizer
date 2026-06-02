@@ -1,14 +1,57 @@
+'use client'
+
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 import Badge from "@/components/Badge";
 import Card from "@/components/Card";
 import Input from "@/components/Input";
 import Button from "@/components/Button";
 
-import Form from 'next/form'
+import { authClient } from "@/lib/auth-client";
+import { useState } from "react";
 
 export default function Login() {
+
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const router = useRouter();
+
+    async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>){
+        e.preventDefault();
+        setError(null);
+        
+        const formData = new FormData(e.currentTarget);
+
+        const {data, error} = await authClient.signIn.email({
+            email: formData.get('email') as string,
+            password: formData.get('password') as string,
+            callbackURL: "/dashboard",
+            rememberMe: false
+        }, {
+            onRequest: () => {
+                setLoading(true);
+            },
+            onSuccess: () => {
+                setLoading(false);
+                router.push('/dashboard');
+            },
+            onError: (ctx) => {
+                setLoading(false);
+
+                if( ctx.error.code == "EMAIL_NOT_VERIFIED"){
+                    sessionStorage.setItem('pendingEmail', formData.get('email') as string);
+                    router.push(`/verify-email?error=EMAIL_NOT_VERIFIED`);
+                }else{
+                    setError(ctx.error.message ?? 'Error al iniciar sesion');
+                    return;
+                }   
+            }
+        })
+    }
+
     return(
         <>
             <main className="mx-auto bg-indigo-50 flex">
@@ -27,29 +70,36 @@ export default function Login() {
                                 <h2>Bienvenido de vuelta</h2>
                                 <div className="text-sm mt-2 mb-8">Ingresa tus credenciales para acceder a tu dashboard</div>
 
-                                <Form action="" formMethod="post" className="w-full">
+                                <form onSubmit={handleSubmit} className="w-full">
 
-                                    <Input label="Correo electronico" type="email" name="mail" placeholder="tucorreo@correo.com" className="mb-5" required/>
+                                    {error && <div className="text-red-500 mb-5">{error}</div>}
+
+                                    <Input label="Correo electronico" type="email" name="email" placeholder="tucorreo@correo.com" className="mb-5" required/>
 
                                     <Input label="Contraseña" type="password" name="password" placeholder="" required/>
-                                    <Link href="" className="float-end font-bold text-indigo-600 mt-3 mb-5">Olvidaste tu contraseña?</Link>
+                                    <Link href="/forgot-password" className="float-end font-bold text-indigo-600 mt-3 mb-5">Olvidaste tu contraseña?</Link>
 
-                                    <Button className="mt-8 w-full font-bold" variant="primary">Ingresar</Button>
-
+                                    <Button type="submit" className="mt-8 w-full font-bold" variant="primary" isLoading={loading}>Ingresar</Button>
+                                    
+                                </form>
+                                
                                     <div className="flex flex-col text-center gap-5 mt-5">
 
                                         <div className="my-5"> O continue con:</div>
                                         
                                         <div className="flex flex-row gap-10">
-                                            <Button variant="white" className="grow">Google</Button>
-                                            <Button variant="white" className="grow">Linkedin</Button>
+                                            <Button variant="white" className="grow">
+                                                <Image src="/img/google.svg" alt="google" width={18} height={18}/> Google
+                                            </Button>
+                                            <Button variant="white" className="grow">
+                                                <Image src="/img/linkedin.svg" alt="google" width={18} height={18}/> LinkedIn
+                                            </Button>
                                         </div>
 
-                                        <div>No tienes una cuenta? <Link href="/auth/register" className="font-bold text-indigo-600">Registrate</Link></div>
+                                        <div>No tienes una cuenta? <Link href="/register" className="font-bold text-indigo-600">Registrate</Link></div>
 
                                     </div>
-                                    
-                                </Form>
+                                
                             </Card>
                         </div>
                     </div>
