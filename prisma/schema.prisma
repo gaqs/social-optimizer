@@ -13,18 +13,20 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String
-  email         String    @unique
-  emailVerified Boolean   @default(false)
-  isAdmin       Boolean   @default(false)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id              String    @id @default(cuid())
+  name            String
+  email           String    @unique
+  emailVerified   Boolean   @default(false)
+  isAdmin         Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
-  sessions      Session[]
-  accounts      Account[]
+  sessions        Session[]
+  accounts        Account[]
+  socialAccounts  SocialAccount[]
+  posts           Posts[]
 
-  profile       Profile?
+  profile         Profile?
 }
 
 model Profile {
@@ -80,4 +82,59 @@ model Verification {
   expiresAt  DateTime
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+}
+
+enum SocialPlatforms{
+  X
+  Facebook
+  Instagram
+  Tiktok
+}
+
+model SocialAccount {
+  id                String          @id @default(cuid())
+  provider          SocialPlatforms
+  providerAccountId String
+  accountName       String?
+  username          String?
+  token             SocialToken?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  userId            String
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+}
+
+model SocialToken {
+  id                String        @id @default(uuid())
+  accessToken       String        @db.Text
+  refreshToken      String?       @db.Text
+  expiresAt         DateTime?
+  scope             String?       @db.Text
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  socialAccountId   String        @unique
+  socialAccount     SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
+}
+
+enum Status{
+  draft
+  scheduled
+  published
+  failed
+}
+
+model Posts {
+  id                String         @id @default(uuid())
+  content           String
+  media             String
+  status            Status       
+  ScheduledFor      DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  userId            String
+  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

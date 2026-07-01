@@ -45,12 +45,26 @@ export const auth = betterAuth({
     sendOnSignUp: true,
     autoSignInAfterVerification: true,
     expiresIn: 60,
-    onEmailVerified: async({ user }: {user: User}) => {
-      await prisma.profile.create({
-        data :{
-          userId: user.id,
+    async afterEmailVerification(user, request){
+      
+      try{
+        const existingProfile = await prisma.profile.findUnique({
+          where: { userId: user.id }
+        });
+
+        if(!existingProfile){
+          await prisma.profile.create({
+            data:{
+              userId: user.id,
+            }
+          });
+          console.log(`Perfil creado para el usuario ${user.id}`);
         }
-      })
+      }catch(error){
+        console.error(`Error creando perfil del usuario ${user.id}`);
+        throw error;
+      }
+
     },
     sendVerificationEmail: async({user,token,url}, request) => {
       await sendVerificationMailer({

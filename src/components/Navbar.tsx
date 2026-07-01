@@ -7,6 +7,9 @@ import { authClient } from "@/lib/auth-client";
 import { useEffect, useState } from "react";
 import { SmilePlus, Menu, X } from "lucide-react";
 import Button from "@/components/Button";
+import Dropdown from "@/components/Dropdown";
+import DropdownItem from "@/components/DropdownItem";
+import Image from "next/image"
 
 const sections = [
     { id: "", label: "Inicio"},
@@ -57,7 +60,7 @@ export default function Navbar() {
     }
 
     return (
-        <nav className="fixed flex h-[80px] w-full px-4 md:px-8 lg:px-8 xl:px-8 text-sm font-bold text-gray-500 bg-neutral-50 z-90 shadow-[0_8px_30px_rgb(0,0,0,0.12)]" >
+        <nav className="fixed flex h-[80px] w-full px-4 md:px-8 lg:px-8 xl:px-8 text-gray-500 bg-neutral-50 z-90 shadow-[0_8px_30px_rgb(0,0,0,0.12)]" >
             
             <div id="logo-container" className="absolute left-4 top-1/2 -translate-y-1/2">
                 <Link href="/" className="flex flex-row gap-2 items-center text-black">
@@ -90,24 +93,45 @@ export default function Navbar() {
                 { isPending ? (
                     null
                 ): session ? (   
-                    <>
-                        <div className="flex flex-row gap-5 items-center">
-                            <span>Wenas, {session.user.name}</span>
-                            <Button variant="white" onClick={ handleSignOut } className="font-bold">Cerrar Sesión</Button>
+                <>
+                    <Dropdown trigger={
+                    <div className="flex flex-row items-center">
+                        <div className="flex flex-col text-end me-2">
+                            <div className="font-bold text-md text-black">
+                                {session.user.name}
+                            </div>
+
+                            <div className="text-neutral-500 text-xs font-normal uppercase">
+                                Usuario
+                            </div>
                         </div>
-                    </>            
-                ):(
-                    <>
-                        <ul className="md:flex items-center gap-5">
-                            <li><Link href="/login" className="font-bold">Ingresar</Link></li>
-                            <li>
-                                <Link href="/register">
-                                    <Button variant="primary" className="font-bold">Acceso Gratuito</Button>
-                                </Link>
-                            </li>
-                        </ul>
-                    </>
-                )}
+
+                        <Image src="/img/profile.png" alt="Perfil" width={50} height={50} className="rounded-full border-3 border-indigo-600"/>
+                    </div>
+                    }>
+                        <DropdownItem onClick={() => router.push("/dashboard")} className="cursor-pointer">
+                            Dashboard
+                        </DropdownItem>
+                        <DropdownItem onClick={() => router.push("/profile")} className="cursor-pointer">
+                            Mi Perfil
+                        </DropdownItem>
+                        <DropdownItem onClick={() => handleSignOut()} className="cursor-pointer">
+                            Cerrar Sesión 
+                        </DropdownItem>
+                    </Dropdown>
+                </>            
+            ):(
+                <>
+                    <ul className="md:flex items-center gap-5">
+                        <li><Link href="/login">Ingresar</Link></li>
+                        <li>
+                            <Link href="/register">
+                                <Button variant="primary" className="font-bold">Acceso Gratuito</Button>
+                            </Link>
+                        </li>
+                    </ul>
+                </>
+            )}
             </div>
         
 
@@ -137,7 +161,7 @@ export default function Navbar() {
                             <hr className="my-5 bg-white w-50 h-1 rounded opacity-40" />
                             <div className="text-white hover:text-white-600 mb-5">Wenas, {session.user.name}
 
-                            <Button variant="white" onClick={ handleSignOut } className="font-bold mt-5 rounded-lg">Cerrar Sesión</Button>
+                            <Button variant="white" onClick={ () => handleSignOut() } className="font-bold mt-5 rounded-lg">Cerrar Sesión</Button>
 
                             </div>
                             

@@ -5,11 +5,11 @@ import { CircleCheck } from "lucide-react";
 export default function Checks(){
     return(
         <>
-            <div className="flex flex-row gap-10 mt-10 mb-5">
-                <div className="basis-1/2 py-20">
+            <div className="flex flex-col md:flex-row gap-5 md:gap-10 mt-10 mb-5">
+                <div className="basis-1/2 py-10 md:py-20">
                     <Badge className="mb-5">LABORATORIO DE CONTENIDOS MUNICIPALES</Badge>
                     <h2>Crea contenido impactante en segundos</h2>
-                    <ul className="py-15">
+                    <ul className="py-10 md:py-15">
                         <li className="mb-5">
                             <h4 className="inline-flex pr-5"><CircleCheck className="text-indigo-600 me-5"/> Formatos Optimizados</h4>
                             <p>Visualiza como se verán tus publicaciones antes de enviarlas a tus redes sociales favoritas.</p>

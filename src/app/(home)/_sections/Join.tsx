@@ -4,7 +4,7 @@ export default function Join(){
     return(
         /* header */
         <>
-        <div className="flex flex-col gap-5 item-stretch rounded-3xl bg-indigo-900 text-white text-center p-20">
+        <div className="flex flex-col gap-5 item-stretch rounded-3xl bg-indigo-900 text-white text-center p-10 md:p-20">
             <h1>¿Listo para potenciar tu comunidad digital?</h1>
             <span className="text-white my-5">Únete a cientos de emprendedores que ya estan profesionalizando<br />su presencia digital con SocialOptimizer</span>
             <div className="flex flex-row gap-4 justify-center">

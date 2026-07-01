@@ -10,7 +10,9 @@ import {
   Calendar1,
   ChevronLeft,
   ChevronRight,
-  CopyPlus
+  CopyPlus,
+  User,
+  Unplug,
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -27,20 +29,25 @@ const navItems: NavItem[] = [
     icon: Home,
   },
   {
-    label: "Post Creator",
-    href: "/post-creator",
-    icon: Users,
-  },
-  {
-    label: "Calendar",
+    label: "Calendario",
     href: "/calendar",
     icon: Calendar1,
   },
   {
-    label: "Analytics",
+    label: "Analítica",
     href: "/analytics",
     icon: BarChart3,
   },
+  {
+    label: "Perfil",
+    href: "/profile",
+    icon: User,
+  },
+  {
+    label: "Conectar",
+    href: "/profile/connect",
+    icon: Unplug,
+  }
 ];
 
 export default function SideNav() {
@@ -75,7 +82,7 @@ export default function SideNav() {
           {navItems.map((item) => {
             const isActive =
               pathname === item.href ||
-              pathname.startsWith(item.href + "/");
+              pathname.endsWith(item.href + "/");
 
             const Icon = item.icon;
 

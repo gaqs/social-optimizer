@@ -88,11 +88,11 @@ export default function Login() {
                                         <div className="my-5"> O continue con:</div>
                                         
                                         <div className="flex flex-row gap-10">
-                                            <Button variant="white" className="grow">
+                                            <Button variant="border_white" className="grow">
                                                 <Image src="/img/google.svg" alt="google" width={18} height={18}/> Google
                                             </Button>
-                                            <Button variant="white" className="grow">
-                                                <Image src="/img/linkedin.svg" alt="google" width={18} height={18}/> LinkedIn
+                                            <Button variant="border_white" className="grow">
+                                                <Image src="/img/rrss/facebook.png" alt="facebook" width={18} height={18}/> Facebook
                                             </Button>
                                         </div>
 
