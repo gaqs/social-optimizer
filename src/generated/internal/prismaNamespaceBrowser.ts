@@ -55,7 +55,10 @@ export const ModelName = {
   Profile: 'Profile',
   Session: 'Session',
   Account: 'Account',
-  Verification: 'Verification'
+  Verification: 'Verification',
+  SocialAccount: 'SocialAccount',
+  SocialToken: 'SocialToken',
+  Posts: 'Posts'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -92,6 +95,7 @@ export const ProfileScalarFieldEnum = {
   bio: 'bio',
   avatar: 'avatar',
   phone: 'phone',
+  address: 'address',
   city: 'city',
   country: 'country',
   occupation: 'occupation',
@@ -146,6 +150,48 @@ export const VerificationScalarFieldEnum = {
 } as const
 
 export type VerificationScalarFieldEnum = (typeof VerificationScalarFieldEnum)[keyof typeof VerificationScalarFieldEnum]
+
+
+export const SocialAccountScalarFieldEnum = {
+  id: 'id',
+  provider: 'provider',
+  providerAccountId: 'providerAccountId',
+  accountName: 'accountName',
+  username: 'username',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  userId: 'userId'
+} as const
+
+export type SocialAccountScalarFieldEnum = (typeof SocialAccountScalarFieldEnum)[keyof typeof SocialAccountScalarFieldEnum]
+
+
+export const SocialTokenScalarFieldEnum = {
+  id: 'id',
+  accessToken: 'accessToken',
+  refreshToken: 'refreshToken',
+  expiresAt: 'expiresAt',
+  scope: 'scope',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  socialAccountId: 'socialAccountId'
+} as const
+
+export type SocialTokenScalarFieldEnum = (typeof SocialTokenScalarFieldEnum)[keyof typeof SocialTokenScalarFieldEnum]
+
+
+export const PostsScalarFieldEnum = {
+  id: 'id',
+  content: 'content',
+  media: 'media',
+  status: 'status',
+  ScheduledFor: 'ScheduledFor',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  userId: 'userId'
+} as const
+
+export type PostsScalarFieldEnum = (typeof PostsScalarFieldEnum)[keyof typeof PostsScalarFieldEnum]
 
 
 export const SortOrder = {

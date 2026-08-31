@@ -31,9 +31,6 @@ export default function Charts() {
             <Tooltip />
             <Bar dataKey="users" fill="#9895d8" activeBar={{ fill: '#8281d3' }} radius={[10, 10, 0, 0]} />
         </BarChart>
- 
-        
         </>
-    
   );
 }   

@@ -106,7 +106,7 @@ export default function Navbar() {
                             </div>
                         </div>
 
-                        <Image src="/img/profile.png" alt="Perfil" width={50} height={50} className="rounded-full border-3 border-indigo-600"/>
+                        <Image src={ session.user.avatar } alt="Perfil" width={50} height={50} className="rounded-full border-3 border-indigo-600"/>
                     </div>
                     }>
                         <DropdownItem onClick={() => router.push("/dashboard")} className="cursor-pointer">

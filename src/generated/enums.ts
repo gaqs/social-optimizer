@@ -9,7 +9,21 @@
 * 🟢 You can import this file directly.
 */
 
+export const SocialPlatforms = {
+  X: 'X',
+  Facebook: 'Facebook',
+  Instagram: 'Instagram',
+  Tiktok: 'Tiktok'
+} as const
+
+export type SocialPlatforms = (typeof SocialPlatforms)[keyof typeof SocialPlatforms]
 
 
-// This file is empty because there are no enums in the schema.
-export {}
+export const Status = {
+  draft: 'draft',
+  scheduled: 'scheduled',
+  published: 'published',
+  failed: 'failed'
+} as const
+
+export type Status = (typeof Status)[keyof typeof Status]

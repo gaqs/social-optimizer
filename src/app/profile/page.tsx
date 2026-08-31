@@ -3,6 +3,7 @@ import Button from "@/components/Button";
 import Image from "next/image"
 import Card from "@/components/Card";
 import Input from "@/components/Input";
+import Textarea from "@/components/Textarea";
 import Link from "next/link";
 
 import { getLoggedUser } from "@services/auth"
@@ -31,12 +32,12 @@ export default async function Profile() {
                 <section id="profile" className="container p-20 mt-10">
 
                     <div id="profile-portada" className="overflow-hidden h-[300px] rounded-3xl relative">
-                        <Image src="/img/portada.jpg" alt="portada" width={1200} height={200} priority className="w-full"/>
+                        <Image src={ userProfile?.profile?.cover ?? "/img/portada.jpg" } alt="portada" width={1200} height={200} priority className="w-full"/>
                     </div>
                     <div id="profile-top-container" className="flex gap-5 my-5 px-10">
                         <div className="flex flex-none">
                             <div id="profile-avatar" className="-mt-30 w-fit me-5 relative">
-                                <Image src="/img/profile.png" alt="avatar" width={180} height={180} priority className="rounded-2xl border-5 border-white"/>
+                                <Image src={ userProfile?.profile?.avatar ?? "/img/avatar.jpg" } alt="avatar" width={180} height={180} priority className="rounded-2xl border-5 border-white"/>
                             </div>
                             <div id="name-container">
                                 <h3 id="profile-name" className="font-bold">{ userProfile?.name }</h3>
@@ -45,13 +46,16 @@ export default async function Profile() {
                         </div>
                         
                         <div id="profile-buttons" className="flex flex-grow gap-2 justify-end">
-                            <Button variant="secondary" className="h-13">Editar Perfil</Button>
-                            <Button variant="primary" className="h-13"><Share2/></Button>
+                          <Link href="/profile/edit">
+                            <Button variant="primary" className="h-13">Editar Perfil</Button>
+                          </Link>
+                            
+                            <Button variant="secondary" className="h-13"><Share2/></Button>
                         </div>
                     </div>
 
                     <div className="text-neutral-400 mb-5 pe-80"> 
-                        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus ultricies, risus imperdiet aliquet bibendum, risus erat tincidunt risus, id viverra diam turpis a eros. Proin et felis consequat, vestibulum leo vitae, lacinia enim. Aliquam eu posuere tortor, vel imperdiet ante. In blandit rutrum neque, eu varius erat. Aenean euismod metus non ex auctor, id luctus enim vehicula.
+                        { (userProfile?.profile?.bio)?.slice(0,200) } ...
                     </div>
 
                     <div id="profile-details" className="grid grid-cols-12 gap-5">
@@ -63,13 +67,13 @@ export default async function Profile() {
                                 </div>
                                 <div className="grid grid-cols-12 gap-5 mb-5">
                                     <div className="col-span-8">
-                                        <Input label="Correo electronico" type="email" name="email" placeholder="tucorreo@correo.com" className="bg-white" />
+                                        <Input label="Correo electronico" type="email" name="email" placeholder="tucorreo@correo.com" className="bg-indigo-100" defaultValue={userProfile?.email ?? ""} readOnly/>
                                     </div>
                                     <div className="col-span-4">
-                                        <Input label="Teléfono" type="text" name="phone" placeholder="+569 12345678" className="bg-white" />
+                                        <Input label="Teléfono" type="text" name="phone" placeholder="+569 12345678" className="bg-indigo-100" defaultValue={userProfile?.profile?.phone ?? ""} readOnly/>
                                     </div>
                                     <div className="col-span-12">
-                                        <Input label="Ubicacion" type="text" name="ubication" placeholder="Puerto Montt" className="bg-white"/>
+                                        <Input label="Ubicacion" type="text" name="ubication" placeholder="Puerto Montt" className="bg-indigo-100" defaultValue={userProfile?.profile?.city ?? ""} readOnly/>
                                     </div>
                                 </div>
                             </Card>
@@ -81,7 +85,14 @@ export default async function Profile() {
                                 </div>
                                 <div className="grid grid-cols-1 gap-5 mb-5">
                                     <div className="col-span-1">
-                                        <textarea className="w-full h-50 bg-white rounded-xl border-1 border-neutral-300 p-5" placeholder="Esta biografia tiene todo el sentido del mundo"></textarea>
+                                        <Textarea
+                                            id="bio"
+                                            name="bio"
+                                            label="Biografía"
+                                            placeholder="Escribe una breve biografía..."
+                                            className="bg-indigo-100"
+                                            defaultValue={userProfile?.profile?.bio ?? ""}
+                                        />
                                     </div>
                                 </div>
                             </Card>

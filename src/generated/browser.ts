@@ -42,3 +42,18 @@ export type Account = Prisma.AccountModel
  * 
  */
 export type Verification = Prisma.VerificationModel
+/**
+ * Model SocialAccount
+ * 
+ */
+export type SocialAccount = Prisma.SocialAccountModel
+/**
+ * Model SocialToken
+ * 
+ */
+export type SocialToken = Prisma.SocialTokenModel
+/**
+ * Model Posts
+ * 
+ */
+export type Posts = Prisma.PostsModel

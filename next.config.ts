@@ -5,6 +5,14 @@ const nextConfig: NextConfig = {
   experimental: {
     webpackMemoryOptimizations: true,
   },
+  images: {
+        remotePatterns: [
+            {
+                protocol: "https",
+                hostname: "picsum.photos",
+            },
+        ],
+    },
 };
 
 export default nextConfig;

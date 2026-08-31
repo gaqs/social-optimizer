@@ -2,55 +2,12 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
-
 import Badge from "@/components/Badge";
 import Card from "@/components/Card";
-import Input from "@/components/Input";
 import Button from "@/components/Button";
-
-import { authClient } from "@/lib/auth-client";
-import { useState } from "react";
+import LoginForm from "./loginForm";
 
 export default function Login() {
-
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-
-    const router = useRouter();
-
-    async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>){
-        e.preventDefault();
-        setError(null);
-        
-        const formData = new FormData(e.currentTarget);
-
-        const {data, error} = await authClient.signIn.email({
-            email: formData.get('email') as string,
-            password: formData.get('password') as string,
-            callbackURL: "/dashboard",
-            rememberMe: false
-        }, {
-            onRequest: () => {
-                setLoading(true);
-            },
-            onSuccess: () => {
-                setLoading(false);
-                router.push('/dashboard');
-            },
-            onError: (ctx) => {
-                setLoading(false);
-
-                if( ctx.error.code == "EMAIL_NOT_VERIFIED"){
-                    sessionStorage.setItem('pendingEmail', formData.get('email') as string);
-                    router.push(`/verify-email?error=EMAIL_NOT_VERIFIED`);
-                }else{
-                    setError(ctx.error.message ?? 'Error al iniciar sesion');
-                    return;
-                }   
-            }
-        })
-    }
 
     return(
         <>
@@ -70,18 +27,7 @@ export default function Login() {
                                 <h2>Bienvenido de vuelta</h2>
                                 <div className="text-sm mt-2 mb-8">Ingresa tus credenciales para acceder a tu dashboard</div>
 
-                                <form onSubmit={handleSubmit} className="w-full">
-
-                                    {error && <div className="text-red-500 mb-5">{error}</div>}
-
-                                    <Input label="Correo electronico" type="email" name="email" placeholder="tucorreo@correo.com" className="mb-5" required/>
-
-                                    <Input label="Contraseña" type="password" name="password" placeholder="" required/>
-                                    <Link href="/forgot-password" className="float-end font-bold text-indigo-600 mt-3 mb-5">Olvidaste tu contraseña?</Link>
-
-                                    <Button type="submit" className="mt-8 w-full font-bold" variant="primary" isLoading={loading}>Ingresar</Button>
-                                    
-                                </form>
+                                    <LoginForm />
                                 
                                     <div className="flex flex-col text-center gap-5 mt-5">
 

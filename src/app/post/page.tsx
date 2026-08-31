@@ -16,7 +16,20 @@ import {
 
 export default function Post() {
     const [enabled, setEnabled] = useState(false);
-    const [active, setActive] = useState(false);
+    const [selected, setSelected] = useState<string[]>([]);
+
+    const platforms = [
+        {id: "instagram", label: "Instagram", icon: "/img/rrss/instagram.png"},
+        {id: "facebook", label: "Facebook", icon: "/img/rrss/facebook.png"},
+        {id: "tiktok", label: "Tiktok", icon: "/img/rrss/tiktok.png"},
+        {id: "x", label: "X", icon: "/img/rrss/x.png"},
+    ];
+
+    const togglePlatform = (platformId: string) => {
+        setSelected((prev) =>
+            prev.includes(platformId) ? prev.filter((id) => id !== platformId) : [...prev, platformId]
+        );
+    }
 
       return(
         <>
@@ -52,23 +65,32 @@ export default function Post() {
                                     Distribuir a
                                 </div>
                                 <div className="grid grid-cols-2 gap-5">
-                                    <div id="upload-instagram" className="flex flex-col items-center p-5 pt-6 border-3 rounded-2xl border-blue-400 cursor-pointer text-blue-500 relative">
-                                        <Check color={"#DDD"} className="bg-blue-400 rounded-full p-3 absolute top-1 right-1"/>
-                                        <Image src="/img/rrss/instagram.png" alt="rrss" width={30} height={30} priority/>
-                                        <div className="mt-2 text-sm">Instagram</div>
-                                    </div>
-                                    <div id="upload-x" className="flex flex-col items-center p-5 pt-6 border-2 rounded-2xl border-neutral-300 grayscale cursor-pointer">
-                                        <Image src="/img/rrss/x.png" alt="rrss" width={30} height={30} priority className="opacity-60"/>
-                                        <div className="mt-2 text-sm">X</div>
-                                    </div>
-                                    <div id="upload-linkedin" className="flex flex-col items-center p-5 pt-6 border-2 rounded-2xl border-neutral-300 grayscale cursor-pointer">
-                                        <Image src="/img/rrss/linkedin.png" alt="rrss" width={30} height={30} priority/>
-                                        <div className="mt-2 text-sm">LinedIn</div>
-                                    </div>
-                                    <div id="upload-facebook" className="flex flex-col items-center p-5 pt-6 border-2 rounded-2xl border-neutral-300 grayscale cursor-pointer">
-                                        <Image src="/img/rrss/facebook.png" className="rounded-lg" alt="rrss" width={30} height={30} priority/>
-                                        <div className="mt-2 text-sm">Facebook</div>
-                                    </div>
+                                    {
+                                        platforms.map((platform) => {
+                                            const isSelected = selected.includes(platform.id);
+
+                                            return (
+                                                <div key={platform.id} id={`upload-${platform.id}`} onClick={() => togglePlatform(platform.id)} className={`flex flex-col items-center p-5 pt-6 border-2 rounded-2xl cursor-pointer relative ${
+                                                    isSelected
+                                                        ? "border-blue-400 text-blue-500"
+                                                        : "border-neutral-300 grayscale text-neutral-500"
+                                                }`}>
+
+                                                    {isSelected && (
+                                                        <div className="absolute top-1 right-1 bg-blue-400 rounded-full">
+                                                            <Check color="#fff" size={25} strokeWidth={4} className="p-1"/>
+                                                        </div>
+                                                    )}
+
+                                                    <Image src={platform.icon} alt="rrss" width={30} height={30} className={isSelected ? "" : "opacity-60"} priority/>
+                                                    <div className={`mt-2 text-sm ${isSelected ? "font-bold" : ""}`}>
+                                                        {platform.label}
+                                                    </div>
+                                            
+                                                </div>
+                                            )
+                                        })
+                                    }
                                 </div>
                             </Card>
                             <Card>
@@ -116,8 +138,6 @@ export default function Post() {
                                             88% Ia Score
                                         </div>
                                     </div>
-        
-
                                 </div>
                             </Card>
 

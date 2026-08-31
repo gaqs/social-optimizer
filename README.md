@@ -1,36 +1,95 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Social Optimizer
 
-## Getting Started
+Social Optimizer es una plataforma web para crear, organizar y publicar contenido en múltiples redes sociales desde un único lugar. La propuesta combina publicación multirred, programación de posts, recomendaciones de IA para mejorar el alcance y una experiencia de gestión más profesional para marcas, emprendedores y equipos de comunicación.
 
-First, run the development server:
+## ¿Qué hace?
 
+Social Optimizer permite:
+
+- Crear publicaciones con texto y contenido visual
+- Distribuir mensajes a varias plataformas como Instagram, Facebook, TikTok y X
+- Programar publicaciones con fecha y hora
+- Recibir recomendaciones de IA para elegir mejores horarios de publicación
+- Gestionar usuarios, perfiles y autenticación
+- Organizar el flujo editorial desde una interfaz sencilla
+
+## Estado del proyecto
+
+El proyecto ya incluye:
+
+- Autenticación de usuarios
+- Registro y verificación por correo
+- Gestión de perfiles
+- Composer de publicaciones
+- Selección de plataformas
+- Programación de publicaciones
+- Panel inicial con navegación y diseño orientado a producto
+
+## Stack tecnológico
+
+- Next.js 16
+- React 19
+- TypeScript
+- Tailwind CSS
+- Prisma ORM
+- PostgreSQL
+- Better Auth
+- Nodemailer
+- FullCalendar
+- Recharts
+
+## Requisitos previos
+
+Antes de iniciar el proyecto, asegúrate de tener instalado:
+
+- Node.js 20+
+- npm o pnpm
+- PostgreSQL
+
+## Instalación
+
+1. Clona el repositorio:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone <url-del-repo>
+cd social-optimizer
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Instala las dependencias:
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Crea un archivo .env local con las variables necesarias:
+```bash
+DATABASE_URL=postgresql://usuario:password@localhost:5432/social_optimizer
+NEXT_PUBLIC_APP_URL=http://localhost:3000
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+EMAIL_HOST=smtp.tu-proveedor.com
+EMAIL_PORT=587
+EMAIL_USER=tu-email@dominio.com
+EMAIL_PASS=tu-password
+```
 
-## Learn More
+4. Ejecutas las migraciones de Prisma
+```bash
+npx prisma migrate dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+5.Inicia el servidor de desarrollo
+```bash
+npm run dev
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Abre (http://localhost:3000) para ver la aplicación.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Estructura del proyecto
+```bash
+src/
+  app/              # Rutas y páginas de la app
+  components/       # Componentes reutilizables
+  lib/              # Autenticación, Prisma, correo y utilidades
+  services/         # Lógica de negocio y servicios
+  styles/           # Estilos globales
+prisma/
+  schema.prisma     # Modelo de datos
+```
