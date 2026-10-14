@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 
 const loginSchema = z.object({
     email: z
@@ -35,25 +36,38 @@ export async function submitLogin(
 
     const { email, password: pwd } = validatedFields.data;
 
+    let shouldRedirectToProfile = false;
+
     try {
-        const signIn = await auth.api.signInEmail({
+        await auth.api.signInEmail({
             body: {
                 email,
                 password: pwd,
                 rememberMe: true,
             },
             headers: await headers(),
-        }); 
-        return { success: true };
-        
+        });
+        shouldRedirectToProfile = true;
+
     } catch (error: any) {
+        if (error?.body?.code === "EMAIL_NOT_VERIFIED") {
+            redirect("/verify-email?error=EMAIL_NOT_VERIFIED");
+        }
+
         return {
             success: false,
             message: "Por favor corrige los errores del formulario.",
             errors: {
-                    _form: [error?.message ?? "Ocurrió un error inesperado."],
-                },
+                _form: [error?.message ?? "Ocurrió un error inesperado."],
+            },
             inputs: safeInputs,
         };
     }
+
+    if (shouldRedirectToProfile) {
+        redirect("/profile");
+    }
+
+    // fallback, nunca debería llegar acá
+    return { success: false, message: "Error inesperado." };
 }

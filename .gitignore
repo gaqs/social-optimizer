@@ -41,5 +41,10 @@ yarn-error.log*
 next-env.d.ts
 
 /app/generated/prisma
-cambios.txt
-development_changes.py
+/cambios.txt
+/development_changes.py
+/public/uploads/*
+
+develpment_changes.py
+cambios_no_confirmados.txt
+

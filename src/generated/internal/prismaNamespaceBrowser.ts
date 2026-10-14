@@ -184,6 +184,7 @@ export const PostsScalarFieldEnum = {
   id: 'id',
   content: 'content',
   media: 'media',
+  platforms: 'platforms',
   status: 'status',
   ScheduledFor: 'ScheduledFor',
   createdAt: 'createdAt',

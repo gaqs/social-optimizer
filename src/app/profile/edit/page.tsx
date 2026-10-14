@@ -41,10 +41,8 @@ export default async function Edit() {
                     <div className="grid grid-cols-12 gap-5 mt-10">
                         <div className="col-span-4 text-center flex flex-col items-center">
 
-                            <AvatarUpload
-                                currentAvatar={profileData?.profile?.avatar ?? "/img/profile.png"}
-                                onUploadAction={updateAvatarAction}
-                            />
+                            <AvatarUpload currentAvatar={profileData?.profile?.avatar ?? "/img/profile.png"} onUploadAction={updateAvatarAction} />
+                            
                             <div className="font-bold">Imagen de perfil</div>
                             <div className="text-sm text-neutral-500">
                                 JPG, GIF o PNG. Tamaño max 20MB.

@@ -53,7 +53,7 @@ export async function updateProfile(
             message:
                 error instanceof Error
                     ? error.message
-                    : "Ha ocurrio un error inesperado",
+                    : "Ha ocurrio un error inesperado"
         };
     }
 
@@ -80,12 +80,13 @@ const passwordSchema = z.object({
         ctx.addIssue({
             code: "custom",
             message: "Las contraseñas no coinciden",    
+            path: ["repeatpassword"]
         })
     }
 });
 
 export async function updatePassword(
-    _prevState: ActionResponse,
+    prevState: ActionResponse,
     formData: FormData
 ): Promise<ActionResponse> {
 
@@ -121,9 +122,10 @@ export async function updatePassword(
     }catch(error: any){
         return {
             success: false,
-            message:
-                error?.message ||
-                "Ocurrió un error inesperado al cambiar la contraseña.",
+            message: "Por favor corrige los errores del formulario.",
+            errors: {
+                _form: [error?.message ?? "Ocurrió un error inesperado."],
+            },
         };
     }
     

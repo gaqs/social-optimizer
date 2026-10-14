@@ -1,80 +1,115 @@
 import subprocess
+from datetime import datetime
+from pathlib import Path
+
+
+def _git(args, cwd, check=True):
+    return subprocess.run(
+        ["git", *args],
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=check,
+    )
+
 
 def exportar_diff_locales_por_fecha(
-    fecha_inicio: str, 
-    fecha_fin: str, 
-    archivo_salida: str = "cambios_no_committed.txt"
+    fecha_inicio: str,
+    fecha_fin: str,
+    archivo_salida: str = "cambios_no_committed.txt",
+    incluir_nuevos: bool = True,
 ):
     """
-    Exporta el git diff de cambios NO confirmados (uncommitted)
-    cuyos archivos fueron modificados localmente entre fecha_inicio y fecha_fin (YYYY-MM-DD).
+    Exporta el git diff de cambios NO confirmados (staged + unstaged, y
+    opcionalmente archivos nuevos) cuyos archivos fueron modificados en disco
+    entre fecha_inicio y fecha_fin (YYYY-MM-DD).
     """
-    from datetime import datetime
-    from pathlib import Path
-
-    # Convertir strings a objetos datetime
     dt_inicio = datetime.strptime(fecha_inicio, "%Y-%m-%d")
-    # El final del día abarca hasta las 23:59:59
     dt_fin = datetime.strptime(fecha_fin, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
 
     try:
-        # Obtener la lista de archivos con cambios locales (staged y unstaged)
-        status_output = subprocess.check_output(
-            ["git", "status", "--porcelain"],
-            text=True,
-            errors="ignore"
-        )
+        # Raíz del repo: las rutas de git status son relativas a ella
+        raiz = Path(_git(["rev-parse", "--show-toplevel"], cwd=None).stdout.strip())
 
-        archivos_en_rango = []
+        # -z: separa por NUL, sin comillas ni escapes; -uall: lista archivos nuevos individuales
+        status = _git(["status", "--porcelain", "-z", "-uall"], cwd=raiz).stdout
+        entradas = status.split("\0")
 
-        for line in status_output.splitlines():
-            if not line.strip():
+        tracked, nuevos = [], []
+        i = 0
+        while i < len(entradas):
+            entrada = entradas[i]
+            i += 1
+            if len(entrada) < 4:
                 continue
-            
-            # Obtener la ruta del archivo omitiendo el indicador de estado (2 letras + espacio)
-            filepath_str = line[3:].strip().strip('"')
-            path = Path(filepath_str)
 
-            # Verificar si el archivo existe actualmente en disco
-            if path.exists() and path.is_file():
-                # Fecha de modificación en el sistema de archivos local
-                mtime = datetime.fromtimestamp(path.stat().st_mtime)
+            estado, ruta = entrada[:2], entrada[3:]
 
-                if dt_inicio <= mtime <= dt_fin:
-                    archivos_en_rango.append(filepath_str)
+            # En renombrados/copias, la siguiente entrada es la ruta original
+            if "R" in estado or "C" in estado:
+                i += 1
 
-        if not archivos_en_rango:
+            if "D" in estado:
+                continue  # eliminados: no existen en disco, no tienen fecha de modificación
+
+            path = raiz / ruta
+            if not path.is_file():
+                continue
+
+            mtime = datetime.fromtimestamp(path.stat().st_mtime)
+            if not (dt_inicio <= mtime <= dt_fin):
+                continue
+
+            if estado == "??":
+                nuevos.append(ruta)
+            else:
+                tracked.append(ruta)
+
+        if not tracked and not (incluir_nuevos and nuevos):
             print(f"⚠️ No hay archivos modificados en disco entre {fecha_inicio} y {fecha_fin}.")
             return
 
-        print(f"📁 Archivos modificados detectados ({len(archivos_en_rango)}):")
-        for f in archivos_en_rango:
+        print(f"📁 Modificados ({len(tracked)}):")
+        for f in tracked:
             print(f"  - {f}")
+        if incluir_nuevos:
+            print(f"🆕 Nuevos ({len(nuevos)}):")
+            for f in nuevos:
+                print(f"  - {f}")
 
-        # Ejecutamos git diff HEAD sobre los archivos filtrados
-        # "HEAD" incluye tanto cambios en staging (git add) como cambios pendientes
-        cmd = ["git", "diff", "HEAD", "--"] + archivos_en_rango
-        
-        diff_output = subprocess.check_output(cmd, text=True, errors="ignore")
+        partes = []
+
+        if tracked:
+            # Si no hay commits aún, HEAD no existe: usar el árbol vacío
+            hay_head = _git(["rev-parse", "--verify", "HEAD"], cwd=raiz, check=False).returncode == 0
+            base = "HEAD" if hay_head else "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
+            partes.append(_git(["diff", base, "--", *tracked], cwd=raiz).stdout)
+
+        if incluir_nuevos:
+            for f in nuevos:
+                # --no-index devuelve código 1 cuando hay diferencias, es normal
+                r = _git(["diff", "--no-index", "--", "/dev/null", f], cwd=raiz, check=False)
+                partes.append(r.stdout)
+
+        diff_output = "\n".join(p for p in partes if p.strip())
 
         if not diff_output.strip():
-            print("⚠️ Los archivos están modificados pero no presentan diferencias de código.")
+            print("⚠️ Los archivos tienen fecha en el rango pero no presentan diferencias.")
             return
 
-        with open(archivo_salida, "w", encoding="utf-8") as f:
-            f.write(diff_output)
-
-        print(f"\n✅ Cambios exportados exitosamente a: {archivo_salida}")
+        Path(archivo_salida).write_text(diff_output, encoding="utf-8")
+        print(f"\n✅ Cambios exportados a: {archivo_salida}")
 
     except subprocess.CalledProcessError as e:
-        print("❌ Error al consultar Git:", e)
+        print("❌ Error al consultar Git:", e.stderr or e)
     except Exception as e:
         print("❌ Error inesperado:", e)
 
 
 if __name__ == "__main__":
-    # Modifica estas fechas según lo que necesites (Formato: YYYY-MM-DD)
-    FECHA_INICIO = "2026-08-01"
-    FECHA_FIN = "2026-08-31"
+    FECHA_INICIO = "2026-09-01"
+    FECHA_FIN = "2026-09-28"
 
     exportar_diff_locales_por_fecha(FECHA_INICIO, FECHA_FIN, "cambios_no_confirmados.txt")

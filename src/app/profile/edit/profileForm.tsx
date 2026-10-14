@@ -2,13 +2,11 @@
 import Input from "@/components/Input";
 import Button from "@/components/Button";
 import Textarea from "@/components/Textarea";
-import Toast from "@/components/Toast";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
-import { authClient } from "@/lib/auth-client";
-
+import { toast } from "sonner"
 import { updateProfile } from "./actions";
 
 import { useActionState } from "react";
@@ -32,16 +30,15 @@ export default function ProfileForm({ profileData }: ProfileFormProps) {
 
     const router = useRouter();
     useEffect( () => {
-        if( state.success ) {
+        if( state.success && state.message) {
+            toast.success(state.message);
             router.refresh();
         }
-    },[state.success, router]);
+    },[state.id, router]);
 
     return (
         <form id="profile-form" action={action}>
-            
-            <Toast id={state.id} success={state.success} message={state.message} />
-
+        
             <h5 className="flex items-center mb-5">
                 <User strokeWidth={2} color="#4F46E5" className="me-2" />{" "}
                 Información basica
@@ -93,6 +90,7 @@ export default function ProfileForm({ profileData }: ProfileFormProps) {
                         name="phone"
                         label="Número telefónico"
                         placeholder=""
+                        startAdornment={"+56 9"}
                         defaultValue={profileData?.profile?.phone ?? ""}
                     />
                 </div>

@@ -50,6 +50,7 @@ export type PostsCountAggregateOutputType = {
   id: number
   content: number
   media: number
+  platforms: number
   status: number
   ScheduledFor: number
   createdAt: number
@@ -85,6 +86,7 @@ export type PostsCountAggregateInputType = {
   id?: true
   content?: true
   media?: true
+  platforms?: true
   status?: true
   ScheduledFor?: true
   createdAt?: true
@@ -169,6 +171,7 @@ export type PostsGroupByOutputType = {
   id: string
   content: string
   media: string
+  platforms: $Enums.SocialPlatforms[]
   status: $Enums.Status
   ScheduledFor: Date | null
   createdAt: Date
@@ -201,6 +204,7 @@ export type PostsWhereInput = {
   id?: Prisma.StringFilter<"Posts"> | string
   content?: Prisma.StringFilter<"Posts"> | string
   media?: Prisma.StringFilter<"Posts"> | string
+  platforms?: Prisma.EnumSocialPlatformsNullableListFilter<"Posts">
   status?: Prisma.EnumStatusFilter<"Posts"> | $Enums.Status
   ScheduledFor?: Prisma.DateTimeNullableFilter<"Posts"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"Posts"> | Date | string
@@ -213,6 +217,7 @@ export type PostsOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   content?: Prisma.SortOrder
   media?: Prisma.SortOrder
+  platforms?: Prisma.SortOrder
   status?: Prisma.SortOrder
   ScheduledFor?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -228,6 +233,7 @@ export type PostsWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.PostsWhereInput | Prisma.PostsWhereInput[]
   content?: Prisma.StringFilter<"Posts"> | string
   media?: Prisma.StringFilter<"Posts"> | string
+  platforms?: Prisma.EnumSocialPlatformsNullableListFilter<"Posts">
   status?: Prisma.EnumStatusFilter<"Posts"> | $Enums.Status
   ScheduledFor?: Prisma.DateTimeNullableFilter<"Posts"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"Posts"> | Date | string
@@ -240,6 +246,7 @@ export type PostsOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   content?: Prisma.SortOrder
   media?: Prisma.SortOrder
+  platforms?: Prisma.SortOrder
   status?: Prisma.SortOrder
   ScheduledFor?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -257,6 +264,7 @@ export type PostsScalarWhereWithAggregatesInput = {
   id?: Prisma.StringWithAggregatesFilter<"Posts"> | string
   content?: Prisma.StringWithAggregatesFilter<"Posts"> | string
   media?: Prisma.StringWithAggregatesFilter<"Posts"> | string
+  platforms?: Prisma.EnumSocialPlatformsNullableListFilter<"Posts">
   status?: Prisma.EnumStatusWithAggregatesFilter<"Posts"> | $Enums.Status
   ScheduledFor?: Prisma.DateTimeNullableWithAggregatesFilter<"Posts"> | Date | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Posts"> | Date | string
@@ -268,6 +276,7 @@ export type PostsCreateInput = {
   id?: string
   content: string
   media: string
+  platforms?: Prisma.PostsCreateplatformsInput | $Enums.SocialPlatforms[]
   status: $Enums.Status
   ScheduledFor?: Date | string | null
   createdAt?: Date | string
@@ -279,6 +288,7 @@ export type PostsUncheckedCreateInput = {
   id?: string
   content: string
   media: string
+  platforms?: Prisma.PostsCreateplatformsInput | $Enums.SocialPlatforms[]
   status: $Enums.Status
   ScheduledFor?: Date | string | null
   createdAt?: Date | string
@@ -290,6 +300,7 @@ export type PostsUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   content?: Prisma.StringFieldUpdateOperationsInput | string
   media?: Prisma.StringFieldUpdateOperationsInput | string
+  platforms?: Prisma.PostsUpdateplatformsInput | $Enums.SocialPlatforms[]
   status?: Prisma.EnumStatusFieldUpdateOperationsInput | $Enums.Status
   ScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -301,6 +312,7 @@ export type PostsUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   content?: Prisma.StringFieldUpdateOperationsInput | string
   media?: Prisma.StringFieldUpdateOperationsInput | string
+  platforms?: Prisma.PostsUpdateplatformsInput | $Enums.SocialPlatforms[]
   status?: Prisma.EnumStatusFieldUpdateOperationsInput | $Enums.Status
   ScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -312,6 +324,7 @@ export type PostsCreateManyInput = {
   id?: string
   content: string
   media: string
+  platforms?: Prisma.PostsCreateplatformsInput | $Enums.SocialPlatforms[]
   status: $Enums.Status
   ScheduledFor?: Date | string | null
   createdAt?: Date | string
@@ -323,6 +336,7 @@ export type PostsUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   content?: Prisma.StringFieldUpdateOperationsInput | string
   media?: Prisma.StringFieldUpdateOperationsInput | string
+  platforms?: Prisma.PostsUpdateplatformsInput | $Enums.SocialPlatforms[]
   status?: Prisma.EnumStatusFieldUpdateOperationsInput | $Enums.Status
   ScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -333,6 +347,7 @@ export type PostsUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   content?: Prisma.StringFieldUpdateOperationsInput | string
   media?: Prisma.StringFieldUpdateOperationsInput | string
+  platforms?: Prisma.PostsUpdateplatformsInput | $Enums.SocialPlatforms[]
   status?: Prisma.EnumStatusFieldUpdateOperationsInput | $Enums.Status
   ScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -350,10 +365,19 @@ export type PostsOrderByRelationAggregateInput = {
   _count?: Prisma.SortOrder
 }
 
+export type EnumSocialPlatformsNullableListFilter<$PrismaModel = never> = {
+  equals?: $Enums.SocialPlatforms[] | Prisma.ListEnumSocialPlatformsFieldRefInput<$PrismaModel> | null
+  has?: $Enums.SocialPlatforms | Prisma.EnumSocialPlatformsFieldRefInput<$PrismaModel> | null
+  hasEvery?: $Enums.SocialPlatforms[] | Prisma.ListEnumSocialPlatformsFieldRefInput<$PrismaModel>
+  hasSome?: $Enums.SocialPlatforms[] | Prisma.ListEnumSocialPlatformsFieldRefInput<$PrismaModel>
+  isEmpty?: boolean
+}
+
 export type PostsCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   content?: Prisma.SortOrder
   media?: Prisma.SortOrder
+  platforms?: Prisma.SortOrder
   status?: Prisma.SortOrder
   ScheduledFor?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -425,6 +449,15 @@ export type PostsUncheckedUpdateManyWithoutUserNestedInput = {
   deleteMany?: Prisma.PostsScalarWhereInput | Prisma.PostsScalarWhereInput[]
 }
 
+export type PostsCreateplatformsInput = {
+  set: $Enums.SocialPlatforms[]
+}
+
+export type PostsUpdateplatformsInput = {
+  set?: $Enums.SocialPlatforms[]
+  push?: $Enums.SocialPlatforms | $Enums.SocialPlatforms[]
+}
+
 export type EnumStatusFieldUpdateOperationsInput = {
   set?: $Enums.Status
 }
@@ -433,6 +466,7 @@ export type PostsCreateWithoutUserInput = {
   id?: string
   content: string
   media: string
+  platforms?: Prisma.PostsCreateplatformsInput | $Enums.SocialPlatforms[]
   status: $Enums.Status
   ScheduledFor?: Date | string | null
   createdAt?: Date | string
@@ -443,6 +477,7 @@ export type PostsUncheckedCreateWithoutUserInput = {
   id?: string
   content: string
   media: string
+  platforms?: Prisma.PostsCreateplatformsInput | $Enums.SocialPlatforms[]
   status: $Enums.Status
   ScheduledFor?: Date | string | null
   createdAt?: Date | string
@@ -482,6 +517,7 @@ export type PostsScalarWhereInput = {
   id?: Prisma.StringFilter<"Posts"> | string
   content?: Prisma.StringFilter<"Posts"> | string
   media?: Prisma.StringFilter<"Posts"> | string
+  platforms?: Prisma.EnumSocialPlatformsNullableListFilter<"Posts">
   status?: Prisma.EnumStatusFilter<"Posts"> | $Enums.Status
   ScheduledFor?: Prisma.DateTimeNullableFilter<"Posts"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"Posts"> | Date | string
@@ -493,6 +529,7 @@ export type PostsCreateManyUserInput = {
   id?: string
   content: string
   media: string
+  platforms?: Prisma.PostsCreateplatformsInput | $Enums.SocialPlatforms[]
   status: $Enums.Status
   ScheduledFor?: Date | string | null
   createdAt?: Date | string
@@ -503,6 +540,7 @@ export type PostsUpdateWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   content?: Prisma.StringFieldUpdateOperationsInput | string
   media?: Prisma.StringFieldUpdateOperationsInput | string
+  platforms?: Prisma.PostsUpdateplatformsInput | $Enums.SocialPlatforms[]
   status?: Prisma.EnumStatusFieldUpdateOperationsInput | $Enums.Status
   ScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -513,6 +551,7 @@ export type PostsUncheckedUpdateWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   content?: Prisma.StringFieldUpdateOperationsInput | string
   media?: Prisma.StringFieldUpdateOperationsInput | string
+  platforms?: Prisma.PostsUpdateplatformsInput | $Enums.SocialPlatforms[]
   status?: Prisma.EnumStatusFieldUpdateOperationsInput | $Enums.Status
   ScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -523,6 +562,7 @@ export type PostsUncheckedUpdateManyWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   content?: Prisma.StringFieldUpdateOperationsInput | string
   media?: Prisma.StringFieldUpdateOperationsInput | string
+  platforms?: Prisma.PostsUpdateplatformsInput | $Enums.SocialPlatforms[]
   status?: Prisma.EnumStatusFieldUpdateOperationsInput | $Enums.Status
   ScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -535,6 +575,7 @@ export type PostsSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   id?: boolean
   content?: boolean
   media?: boolean
+  platforms?: boolean
   status?: boolean
   ScheduledFor?: boolean
   createdAt?: boolean
@@ -547,6 +588,7 @@ export type PostsSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensi
   id?: boolean
   content?: boolean
   media?: boolean
+  platforms?: boolean
   status?: boolean
   ScheduledFor?: boolean
   createdAt?: boolean
@@ -559,6 +601,7 @@ export type PostsSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensi
   id?: boolean
   content?: boolean
   media?: boolean
+  platforms?: boolean
   status?: boolean
   ScheduledFor?: boolean
   createdAt?: boolean
@@ -571,6 +614,7 @@ export type PostsSelectScalar = {
   id?: boolean
   content?: boolean
   media?: boolean
+  platforms?: boolean
   status?: boolean
   ScheduledFor?: boolean
   createdAt?: boolean
@@ -578,7 +622,7 @@ export type PostsSelectScalar = {
   userId?: boolean
 }
 
-export type PostsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "content" | "media" | "status" | "ScheduledFor" | "createdAt" | "updatedAt" | "userId", ExtArgs["result"]["posts"]>
+export type PostsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "content" | "media" | "platforms" | "status" | "ScheduledFor" | "createdAt" | "updatedAt" | "userId", ExtArgs["result"]["posts"]>
 export type PostsInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
 }
@@ -598,6 +642,7 @@ export type $PostsPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs 
     id: string
     content: string
     media: string
+    platforms: $Enums.SocialPlatforms[]
     status: $Enums.Status
     ScheduledFor: Date | null
     createdAt: Date
@@ -1030,6 +1075,7 @@ export interface PostsFieldRefs {
   readonly id: Prisma.FieldRef<"Posts", 'String'>
   readonly content: Prisma.FieldRef<"Posts", 'String'>
   readonly media: Prisma.FieldRef<"Posts", 'String'>
+  readonly platforms: Prisma.FieldRef<"Posts", 'SocialPlatforms[]'>
   readonly status: Prisma.FieldRef<"Posts", 'Status'>
   readonly ScheduledFor: Prisma.FieldRef<"Posts", 'DateTime'>
   readonly createdAt: Prisma.FieldRef<"Posts", 'DateTime'>

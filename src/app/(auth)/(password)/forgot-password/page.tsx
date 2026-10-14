@@ -57,8 +57,8 @@ export default function ForgotPassword() {
                                 <p className="mb-10">No te preocupes. Introduce tu correo electrónico y te enviaremos las instrucciones necesarias para recuperar el acceso a tu cuenta.</p>
 
                                 <form onSubmit={handleResend} className="text-start">
-                                    <Input label="Correo electronico" type="email" name="email" placeholder="tucorreo@correo.com" className="mb-5" required/>
-                                    <Button type="submit" variant="primary" className="font-bold w-full" isLoading={loading}>
+                                    <Input label="Correo electronico" type="email" name="email" placeholder="tucorreo@correo.com" required/>
+                                    <Button type="submit" variant="primary" className="font-bold w-full mt-5" isLoading={loading}>
                                         Recuperar contraseña
                                     </Button>
                                 </form>

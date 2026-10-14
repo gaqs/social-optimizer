@@ -5,9 +5,6 @@ import Input from "@/components/Input";
 import Button from "@/components/Button";
 import FormError from "@/components/FormError";
 
-import { useEffect } from "react";
-import { useRouter, redirect } from "next/navigation";
-
 import { useActionState } from "react";
 import { submitLogin } from "./action";
 
@@ -21,17 +18,6 @@ export default function LoginForm() {
         submitLogin,
         initialState,
     );
-    const router = useRouter();
-
-    useEffect(() => {
-        console.log(state);
-        if (state.success) {
-            window.location.reload();
-            
-        } else if (state.message === "EMAIL_NOT_VERIFIED") {
-            router.push("/verify-email?error=EMAIL_NOT_VERIFIED");
-        }
-    }, [state, router]);
 
     return (
         <form action={action} className="w-full">

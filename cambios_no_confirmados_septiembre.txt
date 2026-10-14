@@ -1,0 +1,2788 @@
+diff --git a/package-lock.json b/package-lock.json
+index 6aed29a..90219e5 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -8,6 +8,7 @@
+       "name": "social-optimizer",
+       "version": "0.1.0",
+       "dependencies": {
++        "@base-ui/react": "^1.8.0",
+         "@better-auth/i18n": "^1.6.11",
+         "@fullcalendar/core": "^6.1.20",
+         "@fullcalendar/daygrid": "^6.1.20",
+@@ -16,11 +17,14 @@
+         "@prisma/adapter-pg": "^7.8.0",
+         "@prisma/client": "^7.8.0",
+         "better-auth": "^1.6.9",
++        "class-variance-authority": "^0.7.1",
+         "clsx": "^2.1.1",
++        "cn": "^0.2.6",
+         "dotenv": "^17.4.2",
+         "lucide-react": "^1.11.0",
+         "next": "16.2.4",
+         "next-intl": "^4.11.0",
++        "next-themes": "^0.4.6",
+         "nodemailer": "^8.0.7",
+         "pg": "^8.20.0",
+         "react": "19.2.4",
+@@ -28,7 +32,10 @@
+         "react-easy-crop": "^6.2.3",
+         "recharts": "^3.8.1",
+         "save": "^2.9.0",
+-        "tailwind-merge": "^3.5.0"
++        "shadcn": "^4.21.0",
++        "sonner": "^2.0.8",
++        "tailwind-merge": "^3.5.0",
++        "tw-animate-css": "^1.4.0"
+       },
+       "devDependencies": {
+         "@tailwindcss/postcss": "^4",
+@@ -9,6 +9,7 @@
+     "lint": "eslint"
+   },
+   "dependencies": {
++    "@base-ui/react": "^1.8.0",
+     "@better-auth/i18n": "^1.6.11",
+     "@fullcalendar/core": "^6.1.20",
+     "@fullcalendar/daygrid": "^6.1.20",
+@@ -17,11 +18,14 @@
+     "@prisma/adapter-pg": "^7.8.0",
+     "@prisma/client": "^7.8.0",
+     "better-auth": "^1.6.9",
++    "class-variance-authority": "^0.7.1",
+     "clsx": "^2.1.1",
++    "cn": "^0.2.6",
+     "dotenv": "^17.4.2",
+     "lucide-react": "^1.11.0",
+     "next": "16.2.4",
+     "next-intl": "^4.11.0",
++    "next-themes": "^0.4.6",
+     "nodemailer": "^8.0.7",
+     "pg": "^8.20.0",
+     "react": "19.2.4",
+@@ -29,7 +33,10 @@
+     "react-easy-crop": "^6.2.3",
+     "recharts": "^3.8.1",
+     "save": "^2.9.0",
+-    "tailwind-merge": "^3.5.0"
++    "shadcn": "^4.21.0",
++    "sonner": "^2.0.8",
++    "tailwind-merge": "^3.5.0",
++    "tw-animate-css": "^1.4.0"
+   },
+   "devDependencies": {
+     "@tailwindcss/postcss": "^4",
+diff --git a/prisma/schema.prisma b/prisma/schema.prisma
+index 9f68d59..c80a699 100644
+--- a/prisma/schema.prisma
++++ b/prisma/schema.prisma
+@@ -131,6 +131,7 @@ model Posts {
+   id                String         @id @default(uuid())
+   content           String
+   media             String
++  platforms         SocialPlatforms[]
+   status            Status       
+   ScheduledFor      DateTime?
+   createdAt         DateTime       @default(now())
+diff --git a/src/app/(auth)/(password)/forgot-password/page.tsx b/src/app/(auth)/(password)/forgot-password/page.tsx
+index 0688883..f443b9b 100644
+--- a/src/app/(auth)/(password)/forgot-password/page.tsx
++++ b/src/app/(auth)/(password)/forgot-password/page.tsx
+@@ -57,8 +57,8 @@ export default function ForgotPassword() {
+                                 <p className="mb-10">No te preocupes. Introduce tu correo electrónico y te enviaremos las instrucciones necesarias para recuperar el acceso a tu cuenta.</p>
+ 
+                                 <form onSubmit={handleResend} className="text-start">
+-                                    <Input label="Correo electronico" type="email" name="email" placeholder="tucorreo@correo.com" className="mb-5" required/>
+-                                    <Button type="submit" variant="primary" className="font-bold w-full" isLoading={loading}>
++                                    <Input label="Correo electronico" type="email" name="email" placeholder="tucorreo@correo.com" required/>
++                                    <Button type="submit" variant="primary" className="font-bold w-full mt-5" isLoading={loading}>
+                                         Recuperar contraseña
+                                     </Button>
+                                 </form>
+diff --git a/src/app/(auth)/login/action.tsx b/src/app/(auth)/login/action.tsx
+index ded2925..9134586 100644
+--- a/src/app/(auth)/login/action.tsx
++++ b/src/app/(auth)/login/action.tsx
+@@ -3,6 +3,7 @@
+ import { z } from "zod";
+ import { auth } from "@/lib/auth";
+ import { headers } from "next/headers";
++import { redirect } from "next/navigation";
+ 
+ const loginSchema = z.object({
+     email: z
+@@ -35,25 +36,38 @@ export async function submitLogin(
+ 
+     const { email, password: pwd } = validatedFields.data;
+ 
++    let shouldRedirectToProfile = false;
++
+     try {
+-        const signIn = await auth.api.signInEmail({
++        await auth.api.signInEmail({
+             body: {
+                 email,
+                 password: pwd,
+                 rememberMe: true,
+             },
+             headers: await headers(),
+-        }); 
+-        return { success: true };
+-        
++        });
++        shouldRedirectToProfile = true;
++
+     } catch (error: any) {
++        if (error?.body?.code === "EMAIL_NOT_VERIFIED") {
++            redirect("/verify-email?error=EMAIL_NOT_VERIFIED");
++        }
++
+         return {
+             success: false,
+             message: "Por favor corrige los errores del formulario.",
+             errors: {
+-                    _form: [error?.message ?? "Ocurrió un error inesperado."],
+-                },
++                _form: [error?.message ?? "Ocurrió un error inesperado."],
++            },
+             inputs: safeInputs,
+         };
+     }
+-}
++
++    if (shouldRedirectToProfile) {
++        redirect("/profile");
++    }
++
++    // fallback, nunca debería llegar acá
++    return { success: false, message: "Error inesperado." };
++}
+\ No newline at end of file
+diff --git a/src/app/(auth)/login/loginForm.tsx b/src/app/(auth)/login/loginForm.tsx
+index 627dee8..96fb5a6 100644
+--- a/src/app/(auth)/login/loginForm.tsx
++++ b/src/app/(auth)/login/loginForm.tsx
+@@ -5,9 +5,6 @@ import Input from "@/components/Input";
+ import Button from "@/components/Button";
+ import FormError from "@/components/FormError";
+ 
+-import { useEffect } from "react";
+-import { useRouter, redirect } from "next/navigation";
+-
+ import { useActionState } from "react";
+ import { submitLogin } from "./action";
+ 
+@@ -21,17 +18,6 @@ export default function LoginForm() {
+         submitLogin,
+         initialState,
+     );
+-    const router = useRouter();
+-
+-    useEffect(() => {
+-        console.log(state);
+-        if (state.success) {
+-            window.location.reload();
+-            
+-        } else if (state.message === "EMAIL_NOT_VERIFIED") {
+-            router.push("/verify-email?error=EMAIL_NOT_VERIFIED");
+-        }
+-    }, [state, router]);
+ 
+     return (
+         <form action={action} className="w-full">
+@@ -74,4 +60,4 @@ export default function LoginForm() {
+             </Button>
+         </form>
+     );
+-}
++}
+\ No newline at end of file
+diff --git a/src/app/calendar/page.tsx b/src/app/calendar/page.tsx
+index 5e4bbed..a537a6a 100644
+--- a/src/app/calendar/page.tsx
++++ b/src/app/calendar/page.tsx
+@@ -1,153 +1,35 @@
+-'use client';
+-
+-import FullCalendar from "@fullcalendar/react";
+-import dayGridPlugin from "@fullcalendar/daygrid";
+-import timeGridPlugin from "@fullcalendar/timegrid";
+-import SideNav from "@/components/Sidenav";
+-import Card from "@/components/Card";
+-import Charts from "./_sections/Charts";
+-import { useRef } from "react";
+-import { 
+-    TriangleAlert,
+-    BellRing
+-} from 'lucide-react';
+-
+-export default function Calendar() {
+-
+-    const events = [{
+-        id: "1",
+-        title: "Instagram Post",
+-        description: "Post about our new product launch",
+-        start: "2026-06-10",
+-        end: "2026-06-12"
+-    },{
+-        id: "2",
+-        title: "Instagram Post",
+-        description: "Here doing nothing on the beach",
+-        start: "2026-06-15T09:00:00",
+-        end: "2026-06-15T11:30:00",
+-    },{
+-        id: "3",
+-        title: "Linkedin Post",
+-        description: "GOD DAMMIT!!!",
+-        start: "2026-06-20",
+-        end: "2026-06-22"
+-    }]
+-
+-    const hoverTooltipRef = useRef<HTMLDivElement | null>(null);
+-    const pinnedTooltipRef = useRef<HTMLDivElement | null>(null);
+-    //create tooltip
+-    const createTooltip = (info: any) => {
+-        const tooltip = document.createElement("div");
+-        tooltip.className = "calendar-tooltip";
+-        console.log(info.event);
+-        tooltip.innerHTML = `
+-            <div>
+-                <strong>${info.event.title}</strong><br>
+-                <span>X</span>
+-            </div>
+-            "${info.event.extendedProps.description || "No description"}"<br>
+-            Start: ${info.event.start.toLocaleString()}<br>
+-            End: ${info.event.end ? info.event.end.toLocaleString() : "N/A"}
+-        `;
+-        document.body.appendChild(tooltip);
+-
+-        tooltip.style.left = info.jsEvent.pageX + 10 +"px";
+-        tooltip.style.top = info.jsEvent.pageY + 10 + "px";
+-        document.body.appendChild(tooltip);
+-        return tooltip;
+-    }
+-    //remove tooltip
+-    const removeTooltip = (ref:any) => {
+-        if( ref.current ){
+-            ref.current.remove();
+-            ref.current = null;
+-        }
+-    }
+-    //mouseenter
+-    const handleEventMouseEnter = (info: any) => {
+-        if (pinnedTooltipRef.current) return;
+-        hoverTooltipRef.current = createTooltip(info);
+-    };
+-    //mouseleave
+-    const handleEventMouseLeave = (info: any) => {
+-        removeTooltip(hoverTooltipRef);
+-    };
+-
+-    const handleDateClick = (info: any) => {
+-        if(pinnedTooltipRef.current){
+-            removeTooltip(pinnedTooltipRef);
+-            return;
+-        }
+-        removeTooltip(hoverTooltipRef);
+-        pinnedTooltipRef.current = createTooltip(info);
+-
+-    }
+-
+-  return (
+-
+-    <main className="mx-auto bg-indigo-10 flex bg-slate-50">
+-        <SideNav />
+-
+-        <section id="calendar" className="calendar-container container py-20 px-20 mt-0 mt-10">
+-
+-            <div className="mb-10">
+-                <FullCalendar 
+-                    plugins={[dayGridPlugin, timeGridPlugin]}
+-                    headerToolbar={{
+-                        start: "prev,next today",
+-                        center: "title",
+-                        end: "dayGridMonth,dayGridWeek,timeGridDay"
+-                    }}
+-                    initialView="dayGridMonth"
+-                    locale="es"
+-                    fixedWeekCount={false}
+-                    height= "600px"
+-                    events={events}
+-                    editable={true}
+-                    eventMouseEnter={handleEventMouseEnter}
+-                    eventMouseLeave={handleEventMouseLeave}
+-                    eventClick={handleDateClick}
+-
+-                    slotDuration="00:30:00"           // intervalos de 30 minutos
+-                    slotLabelFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}
+-                    slotMinTime="06:00:00"
+-                    slotMaxTime="22:00:00"
+-                    allDaySlot={true}
+-                    
+-                />
+-            </div>
+-
+-            <div className="grid grid-cols-12 gap-5">
+-                <Card className="content-error-messages col-span-4">
+-                    <h4 className="mb-5">Brecha de contenido</h4>
+-                    <div className="content-message flex flex-row mb-5">
+-                        <div className="icon_info p-3 bg-red-200 rounded-md text-red-600 mr-2 w-fit">
+-                            <TriangleAlert />
+-                        </div>
+-                        <div className="flex flex-col text-sm content-center">
+-                            <div className="font-bold">Semana 4 sin posts</div>
+-                            <div>Sin posts el dia 04 de Octubre</div>
+-                        </div>
+-                    </div> 
+-                    <div className="content-message flex flex-row mb-5">
+-                        <div className="icon_info p-3 bg-yellow-200 rounded-md text-yellow-600 mr-2 w-fit">
+-                            <BellRing />
+-                        </div>
+-                        <div className="flex flex-col text-sm content-center">
+-                            <div className="font-bold">Oportunidad de post</div>
+-                            <div>Mejor tiempo: Hoy a las 8:00am</div>
+-                        </div>
+-                    </div>  
+-                </Card>
+-                <Card className="campain-performance col-span-8">
+-                    <Charts />
+-                </Card>
+-            </div>
+-            
+-        </section>
+-    </main>
+-
+-  );
+-
++import { headers } from "next/headers";
++import { redirect } from "next/navigation";
++import { auth } from "@/lib/auth";
++import { prisma } from "@/lib/prisma";
++import CalendarView from "./calendarView";
++
++export default async function CalendarPage() {
++  const session = await auth.api.getSession({ headers: await headers() });
++
++  if (!session?.user) {
++    redirect("/login");
++  }
++
++  const posts = await prisma.posts.findMany({
++    where: {
++      userId: session.user.id,
++      ScheduledFor: { not: null },
++    },
++    orderBy: { ScheduledFor: "asc" },
++  });
++
++  const events = posts.map((post) => ({
++    id: post.id,
++    title: post.content.length > 40 ? post.content.slice(0, 40) + "…" : post.content,
++    start: post.ScheduledFor!.toISOString(),
++    extendedProps: {
++      description: post.content,
++      platforms: post.platforms,
++      media: post.media,
++      status: post.status,
++    },
++  }));
++
++  return <CalendarView events={events} />;
+ }
+\ No newline at end of file
+diff --git a/src/app/layout.tsx b/src/app/layout.tsx
+index 84f5752..192a091 100644
+--- a/src/app/layout.tsx
++++ b/src/app/layout.tsx
+@@ -5,6 +5,8 @@ import { Inter } from 'next/font/google';
+ import Navbar from "@/components/Navbar";
+ import Footer from "@/components/Footer";
+ 
++import { Toaster } from "@/components/ui/sonner"
++
+ const inter = Inter({
+     subsets: ['latin'],
+ });
+@@ -25,6 +27,7 @@ export default function HomeLayout({
+                 <Navbar />
+             </section>
+             {children}
++            <Toaster />
+             <section id="footer">
+                 <Footer />
+             </section>
+diff --git a/src/app/post/page.tsx b/src/app/post/page.tsx
+index 52ce350..a4da8b3 100644
+--- a/src/app/post/page.tsx
++++ b/src/app/post/page.tsx
+@@ -1,138 +1,252 @@
+-'use client'
++"use client";
+ 
+-import { useState } from "react";
++import { useActionState, useEffect, useState, startTransition } from "react";
++import { toast } from "sonner";
+ import SideNav from "@/components/Sidenav";
+-import Image from "next/image"
++import Image from "next/image";
+ import Card from "@/components/Card";
+ import Input from "@/components/Input";
+ import Switch from "@/components/Switch";
+ import Button from "@/components/Button";
++import FormError from "@/components/FormError";
++import ImageUpload from "./imageUpload";
++import { createPost } from "./action";
+ 
+-import {
+-    CloudUpload,
+-    Sparkles,
+-    Check,
+-} from "lucide-react";
++import { CloudUpload, Sparkles, Check } from "lucide-react";
++
++const platforms = [
++    { id: "Instagram", label: "Instagram", icon: "/img/rrss/instagram.png" },
++    { id: "Facebook", label: "Facebook", icon: "/img/rrss/facebook.png" },
++    { id: "Tiktok", label: "Tiktok", icon: "/img/rrss/tiktok.png" },
++    { id: "X", label: "X", icon: "/img/rrss/x.png" },
++];
++
++const initialState: ActionResponse = {
++    success: false,
++    message: "",
++};
+ 
+ export default function Post() {
++    const [state, formAction, isPending] = useActionState(
++        createPost,
++        initialState,
++    );
++
+     const [enabled, setEnabled] = useState(false);
+     const [selected, setSelected] = useState<string[]>([]);
++    const [content, setContent] = useState("");
++    const [mediaFile, setMediaFile] = useState<File | null>(null);
++    const [scheduledDate, setScheduledDate] = useState("");
++    const [scheduledTime, setScheduledTime] = useState("");
+ 
+-    const platforms = [
+-        {id: "instagram", label: "Instagram", icon: "/img/rrss/instagram.png"},
+-        {id: "facebook", label: "Facebook", icon: "/img/rrss/facebook.png"},
+-        {id: "tiktok", label: "Tiktok", icon: "/img/rrss/tiktok.png"},
+-        {id: "x", label: "X", icon: "/img/rrss/x.png"},
+-    ];
++    useEffect(() => {
++        if (state.success && state.message) {
++            toast.success(state.message);
++            setContent("");
++            setSelected([]);
++            setMediaFile(null);
++            setScheduledDate("");
++            setScheduledTime("");
++            setEnabled(false);
++        }
++    }, [state.id]);
+ 
+     const togglePlatform = (platformId: string) => {
+         setSelected((prev) =>
+-            prev.includes(platformId) ? prev.filter((id) => id !== platformId) : [...prev, platformId]
++            prev.includes(platformId)
++                ? prev.filter((id) => id !== platformId)
++                : [...prev, platformId],
+         );
+-    }
++    };
+ 
+-      return(
++    const handleSubmit = () => {
++        const formData = new FormData();
++        formData.set("content", content);
++        selected.forEach((p) => formData.append("platforms", p));
++        formData.set("scheduleEnabled", String(enabled));
++        if (enabled) {
++            formData.set("scheduledDate", scheduledDate);
++            formData.set("scheduledTime", scheduledTime);
++        }
++        if (mediaFile) formData.set("media", mediaFile);
++        
++        startTransition(() => formAction(formData));
++    };
++
++    return (
+         <>
+             <main className="mx-auto bg-indigo-10 flex bg-slate-50">
+                 <SideNav />
+ 
+-                <section id="dashboard" className="container py-20 px-20 mt-0 mt-10">
++                <section
++                    id="dashboard"
++                    className="container py-20 px-20 mt-0 mt-10"
++                >
+                     <div className="w-fill md:w-[50%]">
+-                        <h3 className="text-4xl font-bolder mb-3">Generador de Post</h3>
+-                        <div className="text-secondary text-sm mb-5">Crea y maneja tu contenido a travez de todas tus plataformas.</div>
++                        <h3 className="text-4xl font-bolder mb-3">
++                            Generador de Post
++                        </h3>
++                        <div className="text-black text-sm mb-5">
++                            Crea y maneja tu contenido a travez de todas tus
++                            plataformas.
++                        </div>
+                     </div>
+-                    <div id="post-container" className="grid grid-cols-12 gap-5">
++
++                    <FormError errors={state.errors} />
++
++                    <div
++                        id="post-container"
++                        className="grid grid-cols-12 gap-5"
++                    >
+                         <div id="left-post-container" className="col-span-8">
+-                            <Card className="bg-indigo-50 p-10 mb-5">
+-                                <div id="post-image-upload" className="w-full text-center flex flex-col items-center justify-center">
+-                                    <div className="p-5 bg-white rounded-full text-indigo-600 mb-2 w-fit"><CloudUpload size={32}/></div>
+-                                    <div className="font-bold mb-2">Arrastra y suelta archivos</div>
+-                                    <div className="text-sm text-neutral-400 mb-10">Sube imagenes, videos o reels en alta resolucion (Max. 100MB)</div>
+-                                    <div className="font-bold text-indigo-600">Buscar archivos</div>
+-                                </div>
+-                            </Card>
+-                            <Card>
++
++                            <ImageUpload onImageReady={setMediaFile} error={state.errors?.media} />
++
++                            <Card className="mt-5">
+                                 <div className="uppercase text-neutral-300 font-bold text-sm mb-2">
+                                     Espacio creativo
+                                 </div>
+-                                <textarea className="w-full p-5 h-[500px]" placeholder="Cual es el menaje para hoy? usa @mensiones o #hastags para incrementar alcance"></textarea>
++                                <textarea
++                                    value={content}
++                                    onChange={(e) => setContent(e.target.value)}
++                                    className="w-full p-5 h-[500px]"
++                                    placeholder="Cual es el menaje para hoy? usa @mensiones o #hastags para incrementar alcance"
++                                ></textarea>
++                                { state.errors?.content?.map((err) => (
++                                    <p key={err} className="text-red-500 text-sm">{err}</p>
++                                ))}
+                             </Card>
+                         </div>
+ 
+-                        <div id="right-post-container" className="col-span-4 grid gap-5">
++                        <div
++                            id="right-post-container"
++                            className="col-span-4 grid gap-5"
++                        >
+                             <Card>
+                                 <div className="uppercase text-neutral-300 font-bold text-sm mb-2">
+                                     Distribuir a
+                                 </div>
+                                 <div className="grid grid-cols-2 gap-5">
+-                                    {
+-                                        platforms.map((platform) => {
+-                                            const isSelected = selected.includes(platform.id);
++                                    {platforms.map((platform) => {
++                                        const isSelected = selected.includes( platform.id );
+ 
+-                                            return (
+-                                                <div key={platform.id} id={`upload-${platform.id}`} onClick={() => togglePlatform(platform.id)} className={`flex flex-col items-center p-5 pt-6 border-2 rounded-2xl cursor-pointer relative ${
++                                        return (
++                                            <div
++                                                key={platform.id}
++                                                id={platform.id}
++                                                onClick={() =>
++                                                    togglePlatform(platform.id)
++                                                }
++                                                className={`flex flex-col items-center p-5 pt-6 border-2 rounded-2xl cursor-pointer relative ${
+                                                     isSelected
+                                                         ? "border-blue-400 text-blue-500"
+                                                         : "border-neutral-300 grayscale text-neutral-500"
+-                                                }`}>
+-
+-                                                    {isSelected && (
+-                                                        <div className="absolute top-1 right-1 bg-blue-400 rounded-full">
+-                                                            <Check color="#fff" size={25} strokeWidth={4} className="p-1"/>
+-                                                        </div>
+-                                                    )}
+-
+-                                                    <Image src={platform.icon} alt="rrss" width={30} height={30} className={isSelected ? "" : "opacity-60"} priority/>
+-                                                    <div className={`mt-2 text-sm ${isSelected ? "font-bold" : ""}`}>
+-                                                        {platform.label}
++                                                }`}
++                                            >
++                                                {isSelected && (
++                                                    <div className="absolute top-1 right-1 bg-blue-400 rounded-full">
++                                                        <Check
++                                                            color="#fff"
++                                                            size={25}
++                                                            strokeWidth={4}
++                                                            className="p-1"
++                                                        />
+                                                     </div>
+-                                            
++                                                )}
++
++                                                <Image
++                                                    src={platform.icon}
++                                                    alt={platform.label}
++                                                    width={30}
++                                                    height={30}
++                                                    className={ isSelected ? "" : "opacity-60" }
++                                                    priority
++                                                />
++                                                <div className={`mt-2 text-sm ${isSelected ? "font-bold" : ""}`} >
++                                                    {platform.label}
+                                                 </div>
+-                                            )
+-                                        })
+-                                    }
++                                            </div>
++                                        );
++                                    })}
+                                 </div>
+                             </Card>
+                             <Card>
+                                 <div className="flex justify-between uppercase text-neutral-300 font-bold text-sm mb-5">
++                                    <div>Programar para</div>
+                                     <div>
+-                                        Programar para
++                                        <Switch
++                                            checked={enabled}
++                                            onChange={setEnabled}
++                                        />
+                                     </div>
+-                                    <div>
+-                                        <Switch checked={enabled} onChange={setEnabled} />
+-                                    </div> 
+-                                    
+                                 </div>
++
+                                 <div className="flex flex-col gap-2">
++                                    
+                                     <div className="px-5 pb-2 pt-2 bg-indigo-50 rounded-3xl">
+-                                        <label className="uppercase text-xs">Día publicación</label>
+-                                        <Input type="date" className="w-full font-bold p-2 border-none rounded-lg border-neutral-300"/>
++                                        <label className="uppercase text-xs">
++                                            Día publicación
++                                        </label>
++                                        <Input
++                                            type="date"
++                                            value={scheduledDate}
++                                            className={`w-full font-bold p-2 border-none rounded-lg border-neutral-300 ${!enabled ? 'disabled opacity-20 cursor-not-allowed' : ''}`}
++                                            onChange={(e) => setScheduledDate(e.target.value)}
++                                        />
+                                     </div>
+                                     <div className="px-5 pb-2 pt-2 bg-indigo-50 rounded-3xl">
+-                                        <label className="uppercase text-xs">Hora publicación</label>
+-                                        <Input type="time" className="w-full font-bold p-2 border-none rounded-lg border-neutral-300"/>
++                                        <label className="uppercase text-xs">
++                                            Hora publicación
++                                        </label>
++                                        <Input
++                                            type="time"
++                                            value={scheduledTime}
++                                            className={`w-full font-bold p-2 border-none rounded-lg border-neutral-300 ${!enabled ? 'disabled opacity-20 cursor-not-allowed' : ''}`}
++                                            onChange={(e) => setScheduledTime(e.target.value)}
++                                        />
+                                     </div>
+-                                    
+-                                    
+ 
+                                     <span className="flex flex-row text-amber-700 mt-5 text-sm">
+-                                        <div className="mr-2"><Sparkles /></div>
+-                                        <div className="font-bold"> Recomendado para maximo alcance</div>
++                                        <div className="mr-2">
++                                            <Sparkles />
++                                        </div>
++                                        <div className="font-bold">
++                                            {" "}
++                                            Recomendado para maximo alcance
++                                        </div>
+                                     </span>
+ 
+-                                    <div id="ia-datetime" className="flex flex-row items-center justify-between p-5 bg-indigo-50 rounded-3xl gap-5">
++                                    <div
++                                        id="ia-datetime"
++                                        className="flex flex-row items-center justify-between p-5 bg-indigo-50 rounded-3xl gap-5"
++                                    >
+                                         <div className="flex-col">
+-                                            <div className="font-bold"> Hoy, 8:45 PM </div>
+-                                            <div className="text-xs text-neutral-500"> Ventana optima para Instagram</div>
++                                            <div className="font-bold">
++                                                {" "}
++                                                Hoy, 8:45 PM{" "}
++                                            </div>
++                                            <div className="text-xs text-neutral-500">
++                                                {" "}
++                                                Ventana optima para Instagram
++                                            </div>
+                                         </div>
+                                         <div className="text-xs text-amber-600 font-bold rounded-2xl bg-amber-100 p-2">
+                                             94% Ia Score
+                                         </div>
+                                     </div>
+-                                    <div id="ia-datetime" className="flex flex-row items-center justify-between p-5 bg-indigo-50 rounded-3xl gap-5">
++                                    <div
++                                        id="ia-datetime"
++                                        className="flex flex-row items-center justify-between p-5 bg-indigo-50 rounded-3xl gap-5"
++                                    >
+                                         <div className="flex-col">
+-                                            <div className="font-bold"> Mañana, 10:45 PM </div>
+-                                            <div className="text-xs text-neutral-500"> Peak Global</div>
++                                            <div className="font-bold">
++                                                {" "}
++                                                Mañana, 10:45 PM{" "}
++                                            </div>
++                                            <div className="text-xs text-neutral-500">
++                                                {" "}
++                                                Peak Global
++                                            </div>
+                                         </div>
+                                         <div className="text-xs text-amber-600 font-bold rounded-2xl bg-amber-100 p-2">
+                                             88% Ia Score
+@@ -142,14 +256,25 @@ export default function Post() {
+                             </Card>
+ 
+                             <div>
+-                                <Button variant="primary" className="w-full mb-5 font-bold">Programar publicacion</Button>
+-                                <Button variant="white" className="w-full font-bold">Previsualizar borrador</Button>
++                                <Button
++                                    variant="primary"
++                                    className="w-full mb-5 font-bold"
++                                    onClick={handleSubmit}
++                                    disabled={isPending}
++                                >
++                                    Programar publicacion
++                                </Button>
++                                <Button
++                                    variant="white"
++                                    className="w-full font-bold"
++                                >
++                                    Previsualizar borrador
++                                </Button>
+                             </div>
+                         </div>
+                     </div>
+-                    
+                 </section>
+             </main>
+         </>
+-      )
+-}
+\ No newline at end of file
++    );
++}
+diff --git a/src/app/profile/edit/actions.tsx b/src/app/profile/edit/actions.tsx
+index 5cebedd..f9aa7d3 100644
+--- a/src/app/profile/edit/actions.tsx
++++ b/src/app/profile/edit/actions.tsx
+@@ -53,7 +53,7 @@ export async function updateProfile(
+             message:
+                 error instanceof Error
+                     ? error.message
+-                    : "Ha ocurrio un error inesperado",
++                    : "Ha ocurrio un error inesperado"
+         };
+     }
+ 
+@@ -80,12 +80,13 @@ const passwordSchema = z.object({
+         ctx.addIssue({
+             code: "custom",
+             message: "Las contraseñas no coinciden",    
++            path: ["repeatpassword"]
+         })
+     }
+ });
+ 
+ export async function updatePassword(
+-    _prevState: ActionResponse,
++    prevState: ActionResponse,
+     formData: FormData
+ ): Promise<ActionResponse> {
+ 
+@@ -121,9 +122,10 @@ export async function updatePassword(
+     }catch(error: any){
+         return {
+             success: false,
+-            message:
+-                error?.message ||
+-                "Ocurrió un error inesperado al cambiar la contraseña.",
++            message: "Por favor corrige los errores del formulario.",
++            errors: {
++                _form: [error?.message ?? "Ocurrió un error inesperado."],
++            },
+         };
+     }
+     
+diff --git a/src/app/profile/edit/passwordForm.tsx b/src/app/profile/edit/passwordForm.tsx
+index 80b490e..3be0fab 100644
+--- a/src/app/profile/edit/passwordForm.tsx
++++ b/src/app/profile/edit/passwordForm.tsx
+@@ -1,14 +1,16 @@
+ "use client";
+ import Input from "@/components/Input";
+ import Button from "@/components/Button";
+-import Toast from "@/components/Toast";
++import FormError from "@/components/FormError";
+ 
+-import { useActionState } from "react";
++import { toast } from "sonner"
++
++import { useActionState, useEffect  } from "react";
+ 
+ import { updatePassword } from "./actions";
+ 
+ const initialState: ActionResponse = {
+-    success: true,
++    success: false,
+     message: "",
+ };
+ 
+@@ -18,53 +20,41 @@ export default function PasswordForm({ userId }: any) {
+         initialState,
+     );
+ 
++    useEffect(() => {
++        if (state.success && state.message) {
++            toast.success(state.message);
++        }
++    }, [state.id]);
++    
+     return (
+-        <form id="password-form" action={action}>
+-
+-            {state.message && (
+-                <div className="p-3 rounded-md mb-5 text-sm bg-red-50 text-red-700 border border-red-200">
+-                    {state.message}
++        <>
++            <form id="password-form" action={action}>
++
++                <FormError errors={state.errors} />
++
++                <div className="grid grid-cols-2 gap-5">
++                    <input type="hidden" name="userId" value={userId} />
++                    <div className="col-span-2">
++                        <Input type="password" name="oldpassword" label="Contraseña actual" placeholder="" />
++                    </div>
++                    <div className="col-span-1">
++                        <Input type="password" name="newpassword" label="Nueva contraseña" placeholder="" />
++                    </div>
++                    <div className="col-span-1">
++                        <Input type="password" name="repeatpassword" label="Repetir contraseña" placeholder="" />
++                    </div>
+                 </div>
+-            )}
+ 
+-            <div className="grid grid-cols-2 gap-5">
+-                <input type="hidden" name="userId" value={userId} />
+-                <div className="col-span-2">
+-                    <Input type="password" name="oldpassword" label="Contraseña actual" placeholder="" />
+-                    {state.errors?.oldpassword && (
+-                        <p className="!text-red-500 text-xs mt-1">
+-                            {state.errors.oldpassword[0]}
+-                        </p>
+-                    )}
+-                </div>
+-                <div className="col-span-1">
+-                    <Input type="password" name="newpassword" label="Nueva contraseña" placeholder="" />
+-                    {state.errors?.newpassword && (
+-                        <p className="!text-red-500 text-xs mt-1">
+-                            {state.errors.newpassword[0]}
+-                        </p>
+-                    )}
++                <div className="col-span-12 my-5 flex gap-2 justify-end">
++                    <Button
++                        type="submit"
++                        variant="primary"
++                        className="h-13"
++                        isLoading={isPending} >
++                        Actualizar contraseña
++                    </Button>
+                 </div>
+-                <div className="col-span-1">
+-                    <Input type="password" name="repeatpassword" label="Repetir contraseña" placeholder="" />
+-                    {state.errors?.repeatpassword && (
+-                        <p className="!text-red-500 text-xs mt-1">
+-                            {state.errors.repeatpassword[0]}
+-                        </p>
+-                    )}
+-                </div>
+-            </div>
+-
+-            <div className="col-span-12 my-5 flex gap-2 justify-end">
+-                <Button
+-                    type="submit"
+-                    variant="primary"
+-                    className="h-13"
+-                    isLoading={isPending}
+-                >
+-                    Actualizar contraseña
+-                </Button>
+-            </div>
+-        </form>
++            </form>
++        </>
+     );
+ }
+diff --git a/src/app/profile/edit/profileForm.tsx b/src/app/profile/edit/profileForm.tsx
+index 838c4d2..0c23c62 100644
+--- a/src/app/profile/edit/profileForm.tsx
++++ b/src/app/profile/edit/profileForm.tsx
+@@ -2,12 +2,12 @@
+ import Input from "@/components/Input";
+ import Button from "@/components/Button";
+ import Textarea from "@/components/Textarea";
+-import Toast from "@/components/Toast";
+ 
+ import { useRouter } from "next/navigation";
+-import { useEffect, useState } from "react";
++import { useEffect } from "react";
++
++import { toast } from "sonner"
+ 
+-import { authClient } from "@/lib/auth-client";
+ 
+ import { updateProfile } from "./actions";
+ 
+@@ -32,16 +32,15 @@ export default function ProfileForm({ profileData }: ProfileFormProps) {
+ 
+     const router = useRouter();
+     useEffect( () => {
+-        if( state.success ) {
++        if( state.success && state.message) {
++            toast.success(state.message);
+             router.refresh();
+         }
+-    },[state.success, router]);
++    },[state.id, router]);
+ 
+     return (
+         <form id="profile-form" action={action}>
+-            
+-            <Toast id={state.id} success={state.success} message={state.message} />
+-
++        
+             <h5 className="flex items-center mb-5">
+                 <User strokeWidth={2} color="#4F46E5" className="me-2" />{" "}
+                 Información basica
+@@ -93,6 +92,7 @@ export default function ProfileForm({ profileData }: ProfileFormProps) {
+                         name="phone"
+                         label="Número telefónico"
+                         placeholder=""
++                        startAdornment={"+56 9"}
+                         defaultValue={profileData?.profile?.phone ?? ""}
+                     />
+                 </div>
+diff --git a/src/components/Input.tsx b/src/components/Input.tsx
+index 39ebde3..51d85a5 100644
+--- a/src/components/Input.tsx
++++ b/src/components/Input.tsx
+@@ -1,44 +1,102 @@
+ "use client";
+ 
+-import { forwardRef, InputHTMLAttributes, useState } from "react";
++import {
++  forwardRef,
++  InputHTMLAttributes,
++  ReactNode,
++  useState,
++} from "react";
+ import { EyeOff, Eye } from "lucide-react";
+ import { cn } from "@/lib/utils";
+ 
+ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
+   label?: string;
+   error?: string;
++  startAdornment?: ReactNode;
++  endAdornment?: ReactNode;
+ }
+ 
+-export const Input = forwardRef<HTMLInputElement, InputProps>(({ label, error, type, className, id, ...props }, ref) => {
+-  const [showPassword, setShowPassword] = useState(false);
+-  const isPasswordField = type === "password";
+-  const inputType = isPasswordField && showPassword ? "text" : type;
++export const Input = forwardRef<HTMLInputElement, InputProps>(
++  (
++    {
++      label,
++      error,
++      type,
++      className,
++      id,
++      startAdornment,
++      endAdornment,
++      ...props
++    },
++    ref
++  ) => {
++    const [showPassword, setShowPassword] = useState(false);
++
++    const isPasswordField = type === "password";
++    const inputType =
++      isPasswordField && showPassword ? "text" : type;
+ 
+     return (
+-      <div className="w-full relative">
++      <div className="w-full">
+         {label && (
+-          <label htmlFor={id} className="block font-bold text-gray-700 mb-1">
++          <label
++            htmlFor={id}
++            className="block font-bold text-gray-700 mb-1"
++          >
+             {label}
+           </label>
+         )}
+ 
+-        <input ref={ref} id={id} type={inputType} className={ cn(
+-            "w-full rounded-xl border px-4 py-3 outline-none transition bg-neutral-50",
+-            "border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20",
+-            "disabled:opacity-50 disabled:cursor-not-allowed",
+-            error && "border-red-500 focus:border-red-500 focus:ring-red-500/20",
+-            className
++        <div
++          className={cn(
++            "flex w-full items-center rounded-xl border bg-neutral-50 transition",
++            "border-gray-300 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20",
++            "disabled:opacity-50",
++            error &&
++              "border-red-500 focus-within:border-red-500 focus-within:ring-red-500/20"
+           )}
+-          {...props}
+-        />
++        >
++          {startAdornment && (
++            <div className="flex shrink-0 items-center pl-4 pe-2 text-gray-500">
++                {startAdornment}
++            </div>
++)}
+ 
+-        {isPasswordField && (
+-          <button type="button" onClick={ ()=>setShowPassword(!showPassword) } className="absolute top-[43] right-[20] text-gray-500 cursor-pointer hover:text-gray-700 transition">
+-            { showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+-          </button>
+-        )
++          <input
++            ref={ref}
++            id={id}
++            type={inputType}
++            className={cn(
++              "w-full bg-transparent px-4 py-3 outline-none",
++              "disabled:cursor-not-allowed disabled:opacity-50",
++              startAdornment && "pl-2",
++              (endAdornment || isPasswordField) && "pr-2",
++              className
++            )}
++            {...props}
++          />
+ 
+-        }
++          {isPasswordField ? (
++            <button
++              type="button"
++              onClick={() => setShowPassword(!showPassword)}
++              className="flex items-center px-4 text-gray-500 cursor-pointer hover:text-gray-700 transition"
++              tabIndex={-1}
++            >
++              {showPassword ? (
++                <EyeOff size={20} />
++              ) : (
++                <Eye size={20} />
++              )}
++            </button>
++          ) : (
++            endAdornment && (
++              <div className="flex items-center pr-4 text-gray-500">
++                {endAdornment}
++              </div>
++            )
++          )}
++        </div>
+ 
+         {error && (
+           <p className="mt-1 text-xs text-red-500">
+@@ -51,4 +109,6 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({ label, error, t
+ );
+ 
+ Input.displayName = "Input";
++
+ export default Input;
++
+diff --git a/src/components/Navbar.tsx b/src/components/Navbar.tsx
+index 3256460..9bc982c 100644
+--- a/src/components/Navbar.tsx
++++ b/src/components/Navbar.tsx
+@@ -1,191 +1,8 @@
+-"use client";
+-
+-import Link from "next/link";
+-import { usePathname, useRouter } from "next/navigation";
+-import { authClient } from "@/lib/auth-client";
+-
+-import { useEffect, useState } from "react";
+-import { SmilePlus, Menu, X } from "lucide-react";
+-import Button from "@/components/Button";
+-import Dropdown from "@/components/Dropdown";
+-import DropdownItem from "@/components/DropdownItem";
+-import Image from "next/image"
+-
+-const sections = [
+-    { id: "", label: "Inicio"},
+-    { id: "header", label: "Sobre el Proyecto"},
+-    { id: "comunity", label: "Comunidad"},
+-    { id: "join", label: "Unete a Nosotros"},
+-];
+-
+-export default function Navbar() {
+-    const router = useRouter()
+-    const { data: session, isPending } = authClient.useSession();
+-    
+-    const [isOpen, setIsOpen] = useState(false); //para menu responsive
+-    const [active, setActive] = useState(""); //para verificar si se esta en la seccion de la pagina
+-    const pathname = usePathname(); //verifica seccion pagina y actualiza navbar
+-
+-    useEffect( () => {
+-        const observers: IntersectionObserver[] = [];
+-
+-        sections.forEach( ({id}) => {
+-            const element = document.getElementById(id);
+-            if(!element) return;
+-
+-            const observer = new IntersectionObserver(
+-                ([entry]) => {
+-                    if(entry?.isIntersecting){
+-                        setActive(id)
+-                    }
+-                },
+-                {
+-                    root: null,
+-                    rootMargin: "-50% 0px -50% 0px",
+-                    threshold: 0,
+-                }
+-            );
+-            observer.observe(element);
+-            observers.push(observer);  
+-        });
+-
+-        return () => {
+-            observers.forEach( observer => observer.disconnect() );
+-        };
+-    },[]);
+-
+-    const handleSignOut = async () => {
+-        await authClient.signOut()
+-        router.push("/login")
+-    }
+-
+-    return (
+-        <nav className="fixed flex h-[80px] w-full px-4 md:px-8 lg:px-8 xl:px-8 text-gray-500 bg-neutral-50 z-90 shadow-[0_8px_30px_rgb(0,0,0,0.12)]" >
+-            
+-            <div id="logo-container" className="absolute left-4 top-1/2 -translate-y-1/2">
+-                <Link href="/" className="flex flex-row gap-2 items-center text-black">
+-                    <div>
+-                        <SmilePlus size={30}/>
+-                    </div>
+-                    <div>
+-                        <span className="text-xl font-bold text-indigo-600">Social</span>
+-                        <span className="text-xl">Optimizer</span>
+-                    </div>
+-                </Link> 
+-            </div>
+-            
+-            <div id="nav-items-container" className="flex flex-row items-center mx-auto">
+-                <ul className="md:flex grow hidden items-center gap-5">
+-                
+-                    { sections.map( ({id,label}) => (
+-                        <li key={`li_${id}`}>
+-                            <Link key="{id}" href={`/#${id}`} className={`hover:text-indigo-600 hover:underline hover:underline-offset-8 hover:decoration-3 ${ pathname == `/#${id}` || active == id ? "text-indigo-600 underline underline-offset-8 decoration-3" : "" }`}>
+-                                {label}
+-                            </Link>
+-                        </li>
+-                        )
+-                    )}
+-                    
+-                </ul>
+-            </div>
+-            
+-            <div id="auth-container" className="hidden md:flex absolute right-4 top-1/2 -translate-y-1/2">
+-                { isPending ? (
+-                    null
+-                ): session ? (   
+-                <>
+-                    <Dropdown trigger={
+-                    <div className="flex flex-row items-center">
+-                        <div className="flex flex-col text-end me-2">
+-                            <div className="font-bold text-md text-black">
+-                                {session.user.name}
+-                            </div>
+-
+-                            <div className="text-neutral-500 text-xs font-normal uppercase">
+-                                Usuario
+-                            </div>
+-                        </div>
+-
+-                        <Image src={ session.user.avatar } alt="Perfil" width={50} height={50} className="rounded-full border-3 border-indigo-600"/>
+-                    </div>
+-                    }>
+-                        <DropdownItem onClick={() => router.push("/dashboard")} className="cursor-pointer">
+-                            Dashboard
+-                        </DropdownItem>
+-                        <DropdownItem onClick={() => router.push("/profile")} className="cursor-pointer">
+-                            Mi Perfil
+-                        </DropdownItem>
+-                        <DropdownItem onClick={() => handleSignOut()} className="cursor-pointer">
+-                            Cerrar Sesión 
+-                        </DropdownItem>
+-                    </Dropdown>
+-                </>            
+-            ):(
+-                <>
+-                    <ul className="md:flex items-center gap-5">
+-                        <li><Link href="/login">Ingresar</Link></li>
+-                        <li>
+-                            <Link href="/register">
+-                                <Button variant="primary" className="font-bold">Acceso Gratuito</Button>
+-                            </Link>
+-                        </li>
+-                    </ul>
+-                </>
+-            )}
+-            </div>
+-        
+-
+-        <button aria-label="menu-btn" type="button" className="menu-btn inline-block md:hidden active:scale-90 transition cursor-pointer" onClick={ () => setIsOpen(!isOpen) }>
+-            { isOpen ? <X /> : <Menu /> }
+-        </button>
+-
+-        <div className={`mobile-menu absolute top-[70px] left-0 w-full bg-gradient-to-r from-indigo-600 to-violet-600 p-6 transition-full md:hidden ${isOpen ? 'block':'hidden'}`}>
+-
+-            <ul className="flex flex-col space-y-4 text-white text-lg">
+-                { sections.map( ({id,label}) => (
+-                    <li key={`li_${id}`}>
+-                        <Link key="{id}" href={`/#${id}`} className={`ms-6 text-sm hover:text-white-600 hover:underline hover:underline-offset-8 hover:decoration-3`}>
+-                            {label}
+-                        </Link>
+-                    </li>
+-                    )
+-                )}
+-            </ul>
+-
+-            <div id="auth-container-mobile">
+-                { isPending ? (
+-                    null
+-                ): session ? (   
+-                    <>
+-                        <div className="flex flex-col ms-6">
+-                            <hr className="my-5 bg-white w-50 h-1 rounded opacity-40" />
+-                            <div className="text-white hover:text-white-600 mb-5">Wenas, {session.user.name}
+-
+-                            <Button variant="white" onClick={ () => handleSignOut() } className="font-bold mt-5 rounded-lg">Cerrar Sesión</Button>
+-
+-                            </div>
+-                            
+-                        </div>
+-                    </>            
+-                ):(
+-                    <>
+-                        <ul className="flex flex-col space-y-4 text-white text-lg mt-5">
+-                            <li className="ms-6 text-sm hover:text-white-600 hover:underline hover:underline-offset-8 hover:decoration-3 text-white-600">
+-                                <Link href="/login" className="font-bold">Ingresar</Link>
+-                            </li>
+-                            <li className="ms-6 text-sm">
+-                                <Link href="/register">
+-                                    <Button variant="white" className="font-bold rounded-lg">Acceso Gratuito</Button>
+-                                </Link>
+-                            </li>
+-                        </ul>
+-                    </>
+-                )}
+-            </div>
+-
+-        </div>
+-    </nav>
+-
+-
+-    );
+-}
++import { auth } from "@/lib/auth";
++import { headers } from "next/headers";
++import NavbarClient from "./NavbarClient";
++
++export default async function Navbar() {
++    const session = await auth.api.getSession({ headers: await headers() });
++    return <NavbarClient session={session} />;
++}
+\ No newline at end of file
+diff --git a/src/generated/internal/class.ts b/src/generated/internal/class.ts
+index 7838976..12e705e 100644
+--- a/src/generated/internal/class.ts
++++ b/src/generated/internal/class.ts
+@@ -20,7 +20,7 @@ const config: runtime.GetPrismaClientConfig = {
+   "clientVersion": "7.8.0",
+   "engineVersion": "3c6e192761c0362d496ed980de936e2f3cebcd3a",
+   "activeProvider": "postgresql",
+-  "inlineSchema": "// This is your Prisma schema file,\n// learn more about it in the docs: https://pris.ly/d/prisma-schema\n\n// Get a free hosted Postgres database in seconds: `npx create-db`\n\ngenerator client {\n  provider = \"prisma-client\"\n  output   = \"../src/generated\"\n}\n\ndatasource db {\n  provider = \"postgresql\"\n}\n\nmodel User {\n  id            String   @id @default(cuid())\n  name          String\n  email         String   @unique\n  emailVerified Boolean  @default(false)\n  isAdmin       Boolean  @default(false)\n  createdAt     DateTime @default(now())\n  updatedAt     DateTime @updatedAt\n\n  sessions       Session[]\n  accounts       Account[]\n  socialAccounts SocialAccount[]\n  posts          Posts[]\n\n  profile Profile?\n}\n\nmodel Profile {\n  id         String   @id @default(cuid())\n  bio        String?\n  avatar     String?\n  phone      String?\n  address    String?\n  city       String?\n  country    String?\n  occupation String?\n  createdAt  DateTime @default(now())\n  updatedAt  DateTime @updatedAt\n\n  userId String @unique\n  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)\n}\n\nmodel Session {\n  id        String   @id @default(cuid())\n  token     String   @unique\n  ipAddress String?\n  userAgent String?\n  expiresAt DateTime\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n\n  userId String\n  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)\n}\n\nmodel Account {\n  id                    String    @id @default(cuid())\n  accountId             String\n  providerId            String\n  accessToken           String?\n  refreshToken          String?\n  accessTokenExpiresAt  DateTime?\n  refreshTokenExpiresAt DateTime?\n  scope                 String?\n  idToken               String?\n  password              String?\n  createdAt             DateTime  @default(now())\n  updatedAt             DateTime  @updatedAt\n\n  userId String\n  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)\n}\n\nmodel Verification {\n  id         String   @id @default(cuid())\n  identifier String\n  value      String\n  expiresAt  DateTime\n  createdAt  DateTime @default(now())\n  updatedAt  DateTime @updatedAt\n}\n\nenum SocialPlatforms {\n  X\n  Facebook\n  Instagram\n  Tiktok\n}\n\nmodel SocialAccount {\n  id                String          @id @default(cuid())\n  provider          SocialPlatforms\n  providerAccountId String\n  accountName       String?\n  username          String?\n  token             SocialToken?\n  createdAt         DateTime        @default(now())\n  updatedAt         DateTime        @updatedAt\n\n  userId String\n  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)\n}\n\nmodel SocialToken {\n  id           String    @id @default(uuid())\n  accessToken  String    @db.Text\n  refreshToken String?   @db.Text\n  expiresAt    DateTime?\n  scope        String?   @db.Text\n  createdAt    DateTime  @default(now())\n  updatedAt    DateTime  @updatedAt\n\n  socialAccountId String        @unique\n  socialAccount   SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)\n}\n\nenum Status {\n  draft\n  scheduled\n  published\n  failed\n}\n\nmodel Posts {\n  id           String    @id @default(uuid())\n  content      String\n  media        String\n  status       Status\n  ScheduledFor DateTime?\n  createdAt    DateTime  @default(now())\n  updatedAt    DateTime  @updatedAt\n\n  userId String\n  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)\n}\n",
++  "inlineSchema": "// This is your Prisma schema file,\n// learn more about it in the docs: https://pris.ly/d/prisma-schema\n\n// Get a free hosted Postgres database in seconds: `npx create-db`\n\ngenerator client {\n  provider = \"prisma-client\"\n  output   = \"../src/generated\"\n}\n\ndatasource db {\n  provider = \"postgresql\"\n}\n\nmodel User {\n  id            String   @id @default(cuid())\n  name          String\n  email         String   @unique\n  emailVerified Boolean  @default(false)\n  isAdmin       Boolean  @default(false)\n  createdAt     DateTime @default(now())\n  updatedAt     DateTime @updatedAt\n\n  sessions       Session[]\n  accounts       Account[]\n  socialAccounts SocialAccount[]\n  posts          Posts[]\n\n  profile Profile?\n}\n\nmodel Profile {\n  id         String   @id @default(cuid())\n  bio        String?\n  avatar     String?\n  phone      String?\n  address    String?\n  city       String?\n  country    String?\n  occupation String?\n  createdAt  DateTime @default(now())\n  updatedAt  DateTime @updatedAt\n\n  userId String @unique\n  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)\n}\n\nmodel Session {\n  id        String   @id @default(cuid())\n  token     String   @unique\n  ipAddress String?\n  userAgent String?\n  expiresAt DateTime\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n\n  userId String\n  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)\n}\n\nmodel Account {\n  id                    String    @id @default(cuid())\n  accountId             String\n  providerId            String\n  accessToken           String?\n  refreshToken          String?\n  accessTokenExpiresAt  DateTime?\n  refreshTokenExpiresAt DateTime?\n  scope                 String?\n  idToken               String?\n  password              String?\n  createdAt             DateTime  @default(now())\n  updatedAt             DateTime  @updatedAt\n\n  userId String\n  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)\n}\n\nmodel Verification {\n  id         String   @id @default(cuid())\n  identifier String\n  value      String\n  expiresAt  DateTime\n  createdAt  DateTime @default(now())\n  updatedAt  DateTime @updatedAt\n}\n\nenum SocialPlatforms {\n  X\n  Facebook\n  Instagram\n  Tiktok\n}\n\nmodel SocialAccount {\n  id                String          @id @default(cuid())\n  provider          SocialPlatforms\n  providerAccountId String\n  accountName       String?\n  username          String?\n  token             SocialToken?\n  createdAt         DateTime        @default(now())\n  updatedAt         DateTime        @updatedAt\n\n  userId String\n  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)\n}\n\nmodel SocialToken {\n  id           String    @id @default(uuid())\n  accessToken  String    @db.Text\n  refreshToken String?   @db.Text\n  expiresAt    DateTime?\n  scope        String?   @db.Text\n  createdAt    DateTime  @default(now())\n  updatedAt    DateTime  @updatedAt\n\n  socialAccountId String        @unique\n  socialAccount   SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)\n}\n\nenum Status {\n  draft\n  scheduled\n  published\n  failed\n}\n\nmodel Posts {\n  id           String            @id @default(uuid())\n  content      String\n  media        String\n  platforms    SocialPlatforms[]\n  status       Status\n  ScheduledFor DateTime?\n  createdAt    DateTime          @default(now())\n  updatedAt    DateTime          @updatedAt\n\n  userId String\n  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)\n}\n",
+   "runtimeDataModel": {
+     "models": {},
+     "enums": {},
+@@ -32,10 +32,10 @@ const config: runtime.GetPrismaClientConfig = {
+   }
+ }
+ 
+-config.runtimeDataModel = JSON.parse("{\"models\":{\"User\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"name\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"email\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"emailVerified\",\"kind\":\"scalar\",\"type\":\"Boolean\"},{\"name\":\"isAdmin\",\"kind\":\"scalar\",\"type\":\"Boolean\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"sessions\",\"kind\":\"object\",\"type\":\"Session\",\"relationName\":\"SessionToUser\"},{\"name\":\"accounts\",\"kind\":\"object\",\"type\":\"Account\",\"relationName\":\"AccountToUser\"},{\"name\":\"socialAccounts\",\"kind\":\"object\",\"type\":\"SocialAccount\",\"relationName\":\"SocialAccountToUser\"},{\"name\":\"posts\",\"kind\":\"object\",\"type\":\"Posts\",\"relationName\":\"PostsToUser\"},{\"name\":\"profile\",\"kind\":\"object\",\"type\":\"Profile\",\"relationName\":\"ProfileToUser\"}],\"dbName\":null},\"Profile\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"bio\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"avatar\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"phone\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"address\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"city\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"country\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"occupation\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"userId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"user\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"ProfileToUser\"}],\"dbName\":null},\"Session\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"token\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"ipAddress\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"userAgent\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"expiresAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"userId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"user\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"SessionToUser\"}],\"dbName\":null},\"Account\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"accountId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"providerId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"accessToken\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"refreshToken\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"accessTokenExpiresAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"refreshTokenExpiresAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"scope\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"idToken\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"password\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"userId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"user\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"AccountToUser\"}],\"dbName\":null},\"Verification\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"identifier\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"value\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"expiresAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null},\"SocialAccount\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"provider\",\"kind\":\"enum\",\"type\":\"SocialPlatforms\"},{\"name\":\"providerAccountId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"accountName\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"username\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"token\",\"kind\":\"object\",\"type\":\"SocialToken\",\"relationName\":\"SocialAccountToSocialToken\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"userId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"user\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"SocialAccountToUser\"}],\"dbName\":null},\"SocialToken\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"accessToken\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"refreshToken\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"expiresAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"scope\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"socialAccountId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"socialAccount\",\"kind\":\"object\",\"type\":\"SocialAccount\",\"relationName\":\"SocialAccountToSocialToken\"}],\"dbName\":null},\"Posts\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"content\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"media\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"status\",\"kind\":\"enum\",\"type\":\"Status\"},{\"name\":\"ScheduledFor\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"userId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"user\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"PostsToUser\"}],\"dbName\":null}},\"enums\":{},\"types\":{}}")
++config.runtimeDataModel = JSON.parse("{\"models\":{\"User\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"name\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"email\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"emailVerified\",\"kind\":\"scalar\",\"type\":\"Boolean\"},{\"name\":\"isAdmin\",\"kind\":\"scalar\",\"type\":\"Boolean\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"sessions\",\"kind\":\"object\",\"type\":\"Session\",\"relationName\":\"SessionToUser\"},{\"name\":\"accounts\",\"kind\":\"object\",\"type\":\"Account\",\"relationName\":\"AccountToUser\"},{\"name\":\"socialAccounts\",\"kind\":\"object\",\"type\":\"SocialAccount\",\"relationName\":\"SocialAccountToUser\"},{\"name\":\"posts\",\"kind\":\"object\",\"type\":\"Posts\",\"relationName\":\"PostsToUser\"},{\"name\":\"profile\",\"kind\":\"object\",\"type\":\"Profile\",\"relationName\":\"ProfileToUser\"}],\"dbName\":null},\"Profile\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"bio\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"avatar\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"phone\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"address\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"city\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"country\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"occupation\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"userId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"user\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"ProfileToUser\"}],\"dbName\":null},\"Session\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"token\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"ipAddress\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"userAgent\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"expiresAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"userId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"user\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"SessionToUser\"}],\"dbName\":null},\"Account\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"accountId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"providerId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"accessToken\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"refreshToken\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"accessTokenExpiresAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"refreshTokenExpiresAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"scope\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"idToken\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"password\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"userId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"user\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"AccountToUser\"}],\"dbName\":null},\"Verification\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"identifier\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"value\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"expiresAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null},\"SocialAccount\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"provider\",\"kind\":\"enum\",\"type\":\"SocialPlatforms\"},{\"name\":\"providerAccountId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"accountName\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"username\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"token\",\"kind\":\"object\",\"type\":\"SocialToken\",\"relationName\":\"SocialAccountToSocialToken\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"userId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"user\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"SocialAccountToUser\"}],\"dbName\":null},\"SocialToken\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"accessToken\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"refreshToken\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"expiresAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"scope\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"socialAccountId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"socialAccount\",\"kind\":\"object\",\"type\":\"SocialAccount\",\"relationName\":\"SocialAccountToSocialToken\"}],\"dbName\":null},\"Posts\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"content\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"media\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"platforms\",\"kind\":\"enum\",\"type\":\"SocialPlatforms\"},{\"name\":\"status\",\"kind\":\"enum\",\"type\":\"Status\"},{\"name\":\"ScheduledFor\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"userId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"user\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"PostsToUser\"}],\"dbName\":null}},\"enums\":{},\"types\":{}}")
+ config.parameterizationSchema = {
+-  strings: JSON.parse("[\"where\",\"orderBy\",\"cursor\",\"user\",\"sessions\",\"accounts\",\"socialAccount\",\"token\",\"socialAccounts\",\"posts\",\"profile\",\"_count\",\"User.findUnique\",\"User.findUniqueOrThrow\",\"User.findFirst\",\"User.findFirstOrThrow\",\"User.findMany\",\"data\",\"User.createOne\",\"User.createMany\",\"User.createManyAndReturn\",\"User.updateOne\",\"User.updateMany\",\"User.updateManyAndReturn\",\"create\",\"update\",\"User.upsertOne\",\"User.deleteOne\",\"User.deleteMany\",\"having\",\"_min\",\"_max\",\"User.groupBy\",\"User.aggregate\",\"Profile.findUnique\",\"Profile.findUniqueOrThrow\",\"Profile.findFirst\",\"Profile.findFirstOrThrow\",\"Profile.findMany\",\"Profile.createOne\",\"Profile.createMany\",\"Profile.createManyAndReturn\",\"Profile.updateOne\",\"Profile.updateMany\",\"Profile.updateManyAndReturn\",\"Profile.upsertOne\",\"Profile.deleteOne\",\"Profile.deleteMany\",\"Profile.groupBy\",\"Profile.aggregate\",\"Session.findUnique\",\"Session.findUniqueOrThrow\",\"Session.findFirst\",\"Session.findFirstOrThrow\",\"Session.findMany\",\"Session.createOne\",\"Session.createMany\",\"Session.createManyAndReturn\",\"Session.updateOne\",\"Session.updateMany\",\"Session.updateManyAndReturn\",\"Session.upsertOne\",\"Session.deleteOne\",\"Session.deleteMany\",\"Session.groupBy\",\"Session.aggregate\",\"Account.findUnique\",\"Account.findUniqueOrThrow\",\"Account.findFirst\",\"Account.findFirstOrThrow\",\"Account.findMany\",\"Account.createOne\",\"Account.createMany\",\"Account.createManyAndReturn\",\"Account.updateOne\",\"Account.updateMany\",\"Account.updateManyAndReturn\",\"Account.upsertOne\",\"Account.deleteOne\",\"Account.deleteMany\",\"Account.groupBy\",\"Account.aggregate\",\"Verification.findUnique\",\"Verification.findUniqueOrThrow\",\"Verification.findFirst\",\"Verification.findFirstOrThrow\",\"Verification.findMany\",\"Verification.createOne\",\"Verification.createMany\",\"Verification.createManyAndReturn\",\"Verification.updateOne\",\"Verification.updateMany\",\"Verification.updateManyAndReturn\",\"Verification.upsertOne\",\"Verification.deleteOne\",\"Verification.deleteMany\",\"Verification.groupBy\",\"Verification.aggregate\",\"SocialAccount.findUnique\",\"SocialAccount.findUniqueOrThrow\",\"SocialAccount.findFirst\",\"SocialAccount.findFirstOrThrow\",\"SocialAccount.findMany\",\"SocialAccount.createOne\",\"SocialAccount.createMany\",\"SocialAccount.createManyAndReturn\",\"SocialAccount.updateOne\",\"SocialAccount.updateMany\",\"SocialAccount.updateManyAndReturn\",\"SocialAccount.upsertOne\",\"SocialAccount.deleteOne\",\"SocialAccount.deleteMany\",\"SocialAccount.groupBy\",\"SocialAccount.aggregate\",\"SocialToken.findUnique\",\"SocialToken.findUniqueOrThrow\",\"SocialToken.findFirst\",\"SocialToken.findFirstOrThrow\",\"SocialToken.findMany\",\"SocialToken.createOne\",\"SocialToken.createMany\",\"SocialToken.createManyAndReturn\",\"SocialToken.updateOne\",\"SocialToken.updateMany\",\"SocialToken.updateManyAndReturn\",\"SocialToken.upsertOne\",\"SocialToken.deleteOne\",\"SocialToken.deleteMany\",\"SocialToken.groupBy\",\"SocialToken.aggregate\",\"Posts.findUnique\",\"Posts.findUniqueOrThrow\",\"Posts.findFirst\",\"Posts.findFirstOrThrow\",\"Posts.findMany\",\"Posts.createOne\",\"Posts.createMany\",\"Posts.createManyAndReturn\",\"Posts.updateOne\",\"Posts.updateMany\",\"Posts.updateManyAndReturn\",\"Posts.upsertOne\",\"Posts.deleteOne\",\"Posts.deleteMany\",\"Posts.groupBy\",\"Posts.aggregate\",\"AND\",\"OR\",\"NOT\",\"id\",\"content\",\"media\",\"Status\",\"status\",\"ScheduledFor\",\"createdAt\",\"updatedAt\",\"userId\",\"equals\",\"in\",\"notIn\",\"lt\",\"lte\",\"gt\",\"gte\",\"not\",\"contains\",\"startsWith\",\"endsWith\",\"accessToken\",\"refreshToken\",\"expiresAt\",\"scope\",\"socialAccountId\",\"SocialPlatforms\",\"provider\",\"providerAccountId\",\"accountName\",\"username\",\"identifier\",\"value\",\"accountId\",\"providerId\",\"accessTokenExpiresAt\",\"refreshTokenExpiresAt\",\"idToken\",\"password\",\"ipAddress\",\"userAgent\",\"bio\",\"avatar\",\"phone\",\"address\",\"city\",\"country\",\"occupation\",\"name\",\"email\",\"emailVerified\",\"isAdmin\",\"every\",\"some\",\"none\",\"is\",\"isNot\",\"connectOrCreate\",\"upsert\",\"disconnect\",\"delete\",\"connect\",\"createMany\",\"set\",\"updateMany\",\"deleteMany\"]"),
+-  graph: "pANCgAEPBAAA_QEAIAUAAP4BACAIAAD_AQAgCQAAgAIAIAoAAIECACCSAQAA-wEAMJMBAAAcABCUAQAA-wEAMJUBAQAAAAGbAUAA6gEAIZwBQADqAQAhxAEBAOcBACHFAQEAAAABxgEgAPwBACHHASAA_AEAIQEAAAABACAMAwAA9gEAIAcBAOcBACGSAQAAiAIAMJMBAAADABCUAQAAiAIAMJUBAQDnAQAhmwFAAOoBACGcAUAA6gEAIZ0BAQDnAQAhqwFAAOoBACG7AQEA6AEAIbwBAQDoAQAhAwMAALkCACC7AQAAiQIAILwBAACJAgAgDAMAAPYBACAHAQAAAAGSAQAAiAIAMJMBAAADABCUAQAAiAIAMJUBAQAAAAGbAUAA6gEAIZwBQADqAQAhnQEBAOcBACGrAUAA6gEAIbsBAQDoAQAhvAEBAOgBACEDAAAAAwAgAQAABAAwAgAABQAgEQMAAPYBACCSAQAAhwIAMJMBAAAHABCUAQAAhwIAMJUBAQDnAQAhmwFAAOoBACGcAUAA6gEAIZ0BAQDnAQAhqQEBAOgBACGqAQEA6AEAIawBAQDoAQAhtQEBAOcBACG2AQEA5wEAIbcBQADpAQAhuAFAAOkBACG5AQEA6AEAIboBAQDoAQAhCAMAALkCACCpAQAAiQIAIKoBAACJAgAgrAEAAIkCACC3AQAAiQIAILgBAACJAgAguQEAAIkCACC6AQAAiQIAIBEDAAD2AQAgkgEAAIcCADCTAQAABwAQlAEAAIcCADCVAQEAAAABmwFAAOoBACGcAUAA6gEAIZ0BAQDnAQAhqQEBAOgBACGqAQEA6AEAIawBAQDoAQAhtQEBAOcBACG2AQEA5wEAIbcBQADpAQAhuAFAAOkBACG5AQEA6AEAIboBAQDoAQAhAwAAAAcAIAEAAAgAMAIAAAkAIA0DAAD2AQAgBwAAhgIAIJIBAACEAgAwkwEAAAsAEJQBAACEAgAwlQEBAOcBACGbAUAA6gEAIZwBQADqAQAhnQEBAOcBACGvAQAAhQKvASKwAQEA5wEAIbEBAQDoAQAhsgEBAOgBACEEAwAAuQIAIAcAAIIDACCxAQAAiQIAILIBAACJAgAgDQMAAPYBACAHAACGAgAgkgEAAIQCADCTAQAACwAQlAEAAIQCADCVAQEAAAABmwFAAOoBACGcAUAA6gEAIZ0BAQDnAQAhrwEAAIUCrwEisAEBAOcBACGxAQEA6AEAIbIBAQDoAQAhAwAAAAsAIAEAAAwAMAIAAA0AIAwGAADrAQAgkgEAAOYBADCTAQAADwAQlAEAAOYBADCVAQEA5wEAIZsBQADqAQAhnAFAAOoBACGpAQEA5wEAIaoBAQDoAQAhqwFAAOkBACGsAQEA6AEAIa0BAQDnAQAhAQAAAA8AIAwDAAD2AQAgkgEAAIICADCTAQAAEQAQlAEAAIICADCVAQEA5wEAIZYBAQDnAQAhlwEBAOcBACGZAQAAgwKZASKaAUAA6QEAIZsBQADqAQAhnAFAAOoBACGdAQEA5wEAIQIDAAC5AgAgmgEAAIkCACAMAwAA9gEAIJIBAACCAgAwkwEAABEAEJQBAACCAgAwlQEBAAAAAZYBAQDnAQAhlwEBAOcBACGZAQAAgwKZASKaAUAA6QEAIZsBQADqAQAhnAFAAOoBACGdAQEA5wEAIQMAAAARACABAAASADACAAATACAPAwAA9gEAIJIBAAD1AQAwkwEAABUAEJQBAAD1AQAwlQEBAOcBACGbAUAA6gEAIZwBQADqAQAhnQEBAOcBACG9AQEA6AEAIb4BAQDoAQAhvwEBAOgBACHAAQEA6AEAIcEBAQDoAQAhwgEBAOgBACHDAQEA6AEAIQEAAAAVACABAAAAAwAgAQAAAAcAIAEAAAALACABAAAAEQAgAQAAAAEAIA8EAAD9AQAgBQAA_gEAIAgAAP8BACAJAACAAgAgCgAAgQIAIJIBAAD7AQAwkwEAABwAEJQBAAD7AQAwlQEBAOcBACGbAUAA6gEAIZwBQADqAQAhxAEBAOcBACHFAQEA5wEAIcYBIAD8AQAhxwEgAPwBACEFBAAA_QIAIAUAAP4CACAIAAD_AgAgCQAAgAMAIAoAAIEDACADAAAAHAAgAQAAHQAwAgAAAQAgAwAAABwAIAEAAB0AMAIAAAEAIAMAAAAcACABAAAdADACAAABACAMBAAA-AIAIAUAAPkCACAIAAD6AgAgCQAA-wIAIAoAAPwCACCVAQEAAAABmwFAAAAAAZwBQAAAAAHEAQEAAAABxQEBAAAAAcYBIAAAAAHHASAAAAABAREAACEAIAeVAQEAAAABmwFAAAAAAZwBQAAAAAHEAQEAAAABxQEBAAAAAcYBIAAAAAHHASAAAAABAREAACMAMAERAAAjADAMBAAAvgIAIAUAAL8CACAIAADAAgAgCQAAwQIAIAoAAMICACCVAQEAjQIAIZsBQACQAgAhnAFAAJACACHEAQEAjQIAIcUBAQCNAgAhxgEgAL0CACHHASAAvQIAIQIAAAABACARAAAmACAHlQEBAI0CACGbAUAAkAIAIZwBQACQAgAhxAEBAI0CACHFAQEAjQIAIcYBIAC9AgAhxwEgAL0CACECAAAAHAAgEQAAKAAgAgAAABwAIBEAACgAIAMAAAABACAYAAAhACAZAAAmACABAAAAAQAgAQAAABwAIAMLAAC6AgAgHgAAvAIAIB8AALsCACAKkgEAAPcBADCTAQAALwAQlAEAAPcBADCVAQEA1AEAIZsBQADXAQAhnAFAANcBACHEAQEA1AEAIcUBAQDUAQAhxgEgAPgBACHHASAA-AEAIQMAAAAcACABAAAuADAdAAAvACADAAAAHAAgAQAAHQAwAgAAAQAgDwMAAPYBACCSAQAA9QEAMJMBAAAVABCUAQAA9QEAMJUBAQAAAAGbAUAA6gEAIZwBQADqAQAhnQEBAAAAAb0BAQDoAQAhvgEBAOgBACG_AQEA6AEAIcABAQDoAQAhwQEBAOgBACHCAQEA6AEAIcMBAQDoAQAhAQAAADIAIAEAAAAyACAIAwAAuQIAIL0BAACJAgAgvgEAAIkCACC_AQAAiQIAIMABAACJAgAgwQEAAIkCACDCAQAAiQIAIMMBAACJAgAgAwAAABUAIAEAADUAMAIAADIAIAMAAAAVACABAAA1ADACAAAyACADAAAAFQAgAQAANQAwAgAAMgAgDAMAALgCACCVAQEAAAABmwFAAAAAAZwBQAAAAAGdAQEAAAABvQEBAAAAAb4BAQAAAAG_AQEAAAABwAEBAAAAAcEBAQAAAAHCAQEAAAABwwEBAAAAAQERAAA5ACALlQEBAAAAAZsBQAAAAAGcAUAAAAABnQEBAAAAAb0BAQAAAAG-AQEAAAABvwEBAAAAAcABAQAAAAHBAQEAAAABwgEBAAAAAcMBAQAAAAEBEQAAOwAwAREAADsAMAwDAAC3AgAglQEBAI0CACGbAUAAkAIAIZwBQACQAgAhnQEBAI0CACG9AQEAlgIAIb4BAQCWAgAhvwEBAJYCACHAAQEAlgIAIcEBAQCWAgAhwgEBAJYCACHDAQEAlgIAIQIAAAAyACARAAA-ACALlQEBAI0CACGbAUAAkAIAIZwBQACQAgAhnQEBAI0CACG9AQEAlgIAIb4BAQCWAgAhvwEBAJYCACHAAQEAlgIAIcEBAQCWAgAhwgEBAJYCACHDAQEAlgIAIQIAAAAVACARAABAACACAAAAFQAgEQAAQAAgAwAAADIAIBgAADkAIBkAAD4AIAEAAAAyACABAAAAFQAgCgsAALQCACAeAAC2AgAgHwAAtQIAIL0BAACJAgAgvgEAAIkCACC_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_AQEA6AEAIcABAQDoAQAhwQEBAOgBACHCAQEA6AEAIcMBAQDoAQAhEQQAAP0BACAFAAD-AQAgCAAA_wEAIAkAAIACACAKAACBAgAgkgEAAPsBADCTAQAAHAAQlAEAAPsBADCVAQEA5wEAIZsBQADqAQAhnAFAAOoBACHEAQEA5wEAIcUBAQDnAQAhxgEgAPwBACHHASAA_AEAIcsBAAAcACDMAQAAHAAgCpIBAAD3AQAwkwEAAC8AEJQBAAD3AQAwlQEBANQBACGbAUAA1wEAIZwBQADXAQAhxAEBANQBACHFAQEA1AEAIcYBIAD4AQAhxwEgAPgBACEFCwAA2QEAIB4AAPoBACAfAAD6AQAgngEgAAAAAaUBIAD5AQAhBQsAANkBACAeAAD6AQAgHwAA-gEAIJ4BIAAAAAGlASAA-QEAIQKeASAAAAABpQEgAPoBACEPBAAA_QEAIAUAAP4BACAIAAD_AQAgCQAAgAIAIAoAAIECACCSAQAA-wEAMJMBAAAcABCUAQAA-wEAMJUBAQDnAQAhmwFAAOoBACGcAUAA6gEAIcQBAQDnAQAhxQEBAOcBACHGASAA_AEAIccBIAD8AQAhAp4BIAAAAAGlASAA-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_QIAIAUAAP4CACAIAAD_AgAgCQAAgAMAIAoAAIEDACAAAAAB0wEgAAAAAQsYAADsAgAwGQAA8QIAMM0BAADtAgAwzgEAAO4CADDPAQAA8AIAMNABAADwAgAw0QEAAPACADDSAQAA7wIAINMBAADwAgAw1AEAAPICADDVAQAA8wIAMAsYAADgAgAwGQAA5QIAMM0BAADhAgAwzgEAAOICADDPAQAA5AIAMNABAADkAgAw0QEAAOQCADDSAQAA4wIAINMBAADkAgAw1AEAAOYCADDVAQAA5wIAMAsYAADUAgAwGQAA2QIAMM0BAADVAgAwzgEAANYCADDPAQAA2AIAMNABAADYAgAw0QEAANgCADDSAQAA1wIAINMBAADYAgAw1AEAANoCADDVAQAA2wIAMAsYAADIAgAwGQAAzQIAMM0BAADJAgAwzgEAAMoCADDPAQAAzAIAMNABAADMAgAw0QEAAMwCADDSAQAAywIAINMBAADMAgAw1AEAAM4CADDVAQAAzwIAMAcYAADDAgAgGQAAxgIAIM0BAADEAgAgzgEAAMUCACDPAQAAFQAg0AEAABUAINEBAAAyACAKlQEBAAAAAZsBQAAAAAGcAUAAAAABvQEBAAAAAb4BAQAAAAG_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-QIAIAgAAPoCACAJAAD7AgAgCgAA_AIAIJUBAQAAAAGbAUAAAAABnAFAAAAAAcQBAQAAAAHFAQEAAAABxgEgAAAAAccBIAAAAAECAAAAAQAgGAAAjAMAIAMAAAAcACAYAACMAwAgGQAAkAMAIA0AAAAcACAFAAC_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-WgI_WwlAXhpBXx5CYANDYQNEYgNFYwNGZANHZgNIaAlJaR9KawNLbQlMbiBNbwNOcANPcQlQdCFRdSVSdyZTeCZUeyZVfCZWfSZXfyZYgQEJWYIBJ1qEASZbhgEJXIcBKF2IASZeiQEmX4oBCWCNASlhjgEtYo8BBGOQAQRkkQEEZZIBBGaTAQRnlQEEaJcBCWmYAS5qmgEEa5wBCWydAS9tngEEbp8BBG-gAQlwowEwcaQBNHKmAQVzpwEFdKkBBXWqAQV2qwEFd60BBXivAQl5sAE1erIBBXu0AQl8tQE2fbYBBX63AQV_uAEJgAG7ATeBAbwBO4IBvQEGgwG-AQaEAb8BBoUBwAEGhgHBAQaHAcMBBogBxQEJiQHGATyKAcgBBosBygEJjAHLAT2NAcwBBo4BzQEGjwHOAQmQAdEBPpEB0gFC"
++  strings: JSON.parse("[\"where\",\"orderBy\",\"cursor\",\"user\",\"sessions\",\"accounts\",\"socialAccount\",\"token\",\"socialAccounts\",\"posts\",\"profile\",\"_count\",\"User.findUnique\",\"User.findUniqueOrThrow\",\"User.findFirst\",\"User.findFirstOrThrow\",\"User.findMany\",\"data\",\"User.createOne\",\"User.createMany\",\"User.createManyAndReturn\",\"User.updateOne\",\"User.updateMany\",\"User.updateManyAndReturn\",\"create\",\"update\",\"User.upsertOne\",\"User.deleteOne\",\"User.deleteMany\",\"having\",\"_min\",\"_max\",\"User.groupBy\",\"User.aggregate\",\"Profile.findUnique\",\"Profile.findUniqueOrThrow\",\"Profile.findFirst\",\"Profile.findFirstOrThrow\",\"Profile.findMany\",\"Profile.createOne\",\"Profile.createMany\",\"Profile.createManyAndReturn\",\"Profile.updateOne\",\"Profile.updateMany\",\"Profile.updateManyAndReturn\",\"Profile.upsertOne\",\"Profile.deleteOne\",\"Profile.deleteMany\",\"Profile.groupBy\",\"Profile.aggregate\",\"Session.findUnique\",\"Session.findUniqueOrThrow\",\"Session.findFirst\",\"Session.findFirstOrThrow\",\"Session.findMany\",\"Session.createOne\",\"Session.createMany\",\"Session.createManyAndReturn\",\"Session.updateOne\",\"Session.updateMany\",\"Session.updateManyAndReturn\",\"Session.upsertOne\",\"Session.deleteOne\",\"Session.deleteMany\",\"Session.groupBy\",\"Session.aggregate\",\"Account.findUnique\",\"Account.findUniqueOrThrow\",\"Account.findFirst\",\"Account.findFirstOrThrow\",\"Account.findMany\",\"Account.createOne\",\"Account.createMany\",\"Account.createManyAndReturn\",\"Account.updateOne\",\"Account.updateMany\",\"Account.updateManyAndReturn\",\"Account.upsertOne\",\"Account.deleteOne\",\"Account.deleteMany\",\"Account.groupBy\",\"Account.aggregate\",\"Verification.findUnique\",\"Verification.findUniqueOrThrow\",\"Verification.findFirst\",\"Verification.findFirstOrThrow\",\"Verification.findMany\",\"Verification.createOne\",\"Verification.createMany\",\"Verification.createManyAndReturn\",\"Verification.updateOne\",\"Verification.updateMany\",\"Verification.updateManyAndReturn\",\"Verification.upsertOne\",\"Verification.deleteOne\",\"Verification.deleteMany\",\"Verification.groupBy\",\"Verification.aggregate\",\"SocialAccount.findUnique\",\"SocialAccount.findUniqueOrThrow\",\"SocialAccount.findFirst\",\"SocialAccount.findFirstOrThrow\",\"SocialAccount.findMany\",\"SocialAccount.createOne\",\"SocialAccount.createMany\",\"SocialAccount.createManyAndReturn\",\"SocialAccount.updateOne\",\"SocialAccount.updateMany\",\"SocialAccount.updateManyAndReturn\",\"SocialAccount.upsertOne\",\"SocialAccount.deleteOne\",\"SocialAccount.deleteMany\",\"SocialAccount.groupBy\",\"SocialAccount.aggregate\",\"SocialToken.findUnique\",\"SocialToken.findUniqueOrThrow\",\"SocialToken.findFirst\",\"SocialToken.findFirstOrThrow\",\"SocialToken.findMany\",\"SocialToken.createOne\",\"SocialToken.createMany\",\"SocialToken.createManyAndReturn\",\"SocialToken.updateOne\",\"SocialToken.updateMany\",\"SocialToken.updateManyAndReturn\",\"SocialToken.upsertOne\",\"SocialToken.deleteOne\",\"SocialToken.deleteMany\",\"SocialToken.groupBy\",\"SocialToken.aggregate\",\"Posts.findUnique\",\"Posts.findUniqueOrThrow\",\"Posts.findFirst\",\"Posts.findFirstOrThrow\",\"Posts.findMany\",\"Posts.createOne\",\"Posts.createMany\",\"Posts.createManyAndReturn\",\"Posts.updateOne\",\"Posts.updateMany\",\"Posts.updateManyAndReturn\",\"Posts.upsertOne\",\"Posts.deleteOne\",\"Posts.deleteMany\",\"Posts.groupBy\",\"Posts.aggregate\",\"AND\",\"OR\",\"NOT\",\"id\",\"content\",\"media\",\"platforms\",\"Status\",\"status\",\"ScheduledFor\",\"createdAt\",\"updatedAt\",\"userId\",\"equals\",\"in\",\"notIn\",\"lt\",\"lte\",\"gt\",\"gte\",\"not\",\"SocialPlatforms\",\"has\",\"hasEvery\",\"hasSome\",\"contains\",\"startsWith\",\"endsWith\",\"accessToken\",\"refreshToken\",\"expiresAt\",\"scope\",\"socialAccountId\",\"provider\",\"providerAccountId\",\"accountName\",\"username\",\"identifier\",\"value\",\"accountId\",\"providerId\",\"accessTokenExpiresAt\",\"refreshTokenExpiresAt\",\"idToken\",\"password\",\"ipAddress\",\"userAgent\",\"bio\",\"avatar\",\"phone\",\"address\",\"city\",\"country\",\"occupation\",\"name\",\"email\",\"emailVerified\",\"isAdmin\",\"every\",\"some\",\"none\",\"is\",\"isNot\",\"connectOrCreate\",\"upsert\",\"disconnect\",\"delete\",\"connect\",\"createMany\",\"set\",\"updateMany\",\"deleteMany\",\"push\"]"),
++  graph: "pwNCgAEPBAAA_gEAIAUAAP8BACAIAACAAgAgCQAAgQIAIAoAAIICACCSAQAA_AEAMJMBAAAcABCUAQAA_AEAMJUBAQAAAAGcAUAA6wEAIZ0BQADrAQAhyAEBAOgBACHJAQEAAAABygEgAP0BACHLASAA_QEAIQEAAAABACAMAwAA9wEAIAcBAOgBACGSAQAAiQIAMJMBAAADABCUAQAAiQIAMJUBAQDoAQAhnAFAAOsBACGdAUAA6wEAIZ4BAQDoAQAhsAFAAOsBACG_AQEA6QEAIcABAQDpAQAhAwMAALwCACC_AQAAigIAIMABAACKAgAgDAMAAPcBACAHAQAAAAGSAQAAiQIAMJMBAAADABCUAQAAiQIAMJUBAQAAAAGcAUAA6wEAIZ0BQADrAQAhngEBAOgBACGwAUAA6wEAIb8BAQDpAQAhwAEBAOkBACEDAAAAAwAgAQAABAAwAgAABQAgEQMAAPcBACCSAQAAiAIAMJMBAAAHABCUAQAAiAIAMJUBAQDoAQAhnAFAAOsBACGdAUAA6wEAIZ4BAQDoAQAhrgEBAOkBACGvAQEA6QEAIbEBAQDpAQAhuQEBAOgBACG6AQEA6AEAIbsBQADqAQAhvAFAAOoBACG9AQEA6QEAIb4BAQDpAQAhCAMAALwCACCuAQAAigIAIK8BAACKAgAgsQEAAIoCACC7AQAAigIAILwBAACKAgAgvQEAAIoCACC-AQAAigIAIBEDAAD3AQAgkgEAAIgCADCTAQAABwAQlAEAAIgCADCVAQEAAAABnAFAAOsBACGdAUAA6wEAIZ4BAQDoAQAhrgEBAOkBACGvAQEA6QEAIbEBAQDpAQAhuQEBAOgBACG6AQEA6AEAIbsBQADqAQAhvAFAAOoBACG9AQEA6QEAIb4BAQDpAQAhAwAAAAcAIAEAAAgAMAIAAAkAIA0DAAD3AQAgBwAAhwIAIJIBAACFAgAwkwEAAAsAEJQBAACFAgAwlQEBAOgBACGcAUAA6wEAIZ0BQADrAQAhngEBAOgBACGzAQAAhgKoASK0AQEA6AEAIbUBAQDpAQAhtgEBAOkBACEEAwAAvAIAIAcAAIUDACC1AQAAigIAILYBAACKAgAgDQMAAPcBACAHAACHAgAgkgEAAIUCADCTAQAACwAQlAEAAIUCADCVAQEAAAABnAFAAOsBACGdAUAA6wEAIZ4BAQDoAQAhswEAAIYCqAEitAEBAOgBACG1AQEA6QEAIbYBAQDpAQAhAwAAAAsAIAEAAAwAMAIAAA0AIAwGAADsAQAgkgEAAOcBADCTAQAADwAQlAEAAOcBADCVAQEA6AEAIZwBQADrAQAhnQFAAOsBACGuAQEA6AEAIa8BAQDpAQAhsAFAAOoBACGxAQEA6QEAIbIBAQDoAQAhAQAAAA8AIA0DAAD3AQAgkgEAAIMCADCTAQAAEQAQlAEAAIMCADCVAQEA6AEAIZYBAQDoAQAhlwEBAOgBACGYAQAA1QEAIJoBAACEApoBIpsBQADqAQAhnAFAAOsBACGdAUAA6wEAIZ4BAQDoAQAhAgMAALwCACCbAQAAigIAIA0DAAD3AQAgkgEAAIMCADCTAQAAEQAQlAEAAIMCADCVAQEAAAABlgEBAOgBACGXAQEA6AEAIZgBAADVAQAgmgEAAIQCmgEimwFAAOoBACGcAUAA6wEAIZ0BQADrAQAhngEBAOgBACEDAAAAEQAgAQAAEgAwAgAAEwAgDwMAAPcBACCSAQAA9gEAMJMBAAAVABCUAQAA9gEAMJUBAQDoAQAhnAFAAOsBACGdAUAA6wEAIZ4BAQDoAQAhwQEBAOkBACHCAQEA6QEAIcMBAQDpAQAhxAEBAOkBACHFAQEA6QEAIcYBAQDpAQAhxwEBAOkBACEBAAAAFQAgAQAAAAMAIAEAAAAHACABAAAACwAgAQAAABEAIAEAAAABACAPBAAA_gEAIAUAAP8BACAIAACAAgAgCQAAgQIAIAoAAIICACCSAQAA_AEAMJMBAAAcABCUAQAA_AEAMJUBAQDoAQAhnAFAAOsBACGdAUAA6wEAIcgBAQDoAQAhyQEBAOgBACHKASAA_QEAIcsBIAD9AQAhBQQAAIADACAFAACBAwAgCAAAggMAIAkAAIMDACAKAACEAwAgAwAAABwAIAEAAB0AMAIAAAEAIAMAAAAcACABAAAdADACAAABACADAAAAHAAgAQAAHQAwAgAAAQAgDAQAAPsCACAFAAD8AgAgCAAA_QIAIAkAAP4CACAKAAD_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_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-AQAgBQAA_wEAIAgAAIACACAJAACBAgAgCgAAggIAIJIBAAD8AQAwkwEAABwAEJQBAAD8AQAwlQEBAOgBACGcAUAA6wEAIZ0BQADrAQAhyAEBAOgBACHJAQEA6AEAIcoBIAD9AQAhywEgAP0BACHPAQAAHAAg0AEAABwAIAqSAQAA-AEAMJMBAAAvABCUAQAA-AEAMJUBAQDUAQAhnAFAANgBACGdAUAA2AEAIcgBAQDUAQAhyQEBANQBACHKASAA-QEAIcsBIAD5AQAhBQsAANoBACAeAAD7AQAgHwAA-wEAIJ8BIAAAAAGmASAA-gEAIQULAADaAQAgHgAA-wEAIB8AAPsBACCfASAAAAABpgEgAPoBACECnwEgAAAAAaYBIAD7AQAhDwQAAP4BACAFAAD_AQAgCAAAgAIAIAkAAIECACAKAACCAgAgkgEAAPwBADCTAQAAHAAQlAEAAPwBADCVAQEA6AEAIZwBQADrAQAhnQFAAOsBACHIAQEA6AEAIckBAQDoAQAhygEgAP0BACHLASAA_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_AQEA6QEAIcABAQDpAQAhAgAAAAUAIBEAAPkCACACAAAA9wIAIBEAAPgCACALBwEA6AEAIZIBAAD2AgAwkwEAAPcCABCUAQAA9gIAMJUBAQDoAQAhnAFAAOsBACGdAUAA6wEAIZ4BAQDoAQAhsAFAAOsBACG_AQEA6QEAIcABAQDpAQAhCwcBAOgBACGSAQAA9gIAMJMBAAD3AgAQlAEAAPYCADCVAQEA6AEAIZwBQADrAQAhnQFAAOsBACGeAQEA6AEAIbABQADrAQAhvwEBAOkBACHAAQEA6QEAIQcHAQCOAgAhlQEBAI4CACGcAUAAkgIAIZ0BQACSAgAhsAFAAJICACG_AQEAmQIAIcABAQCZAgAhBwcBAI4CACGVAQEAjgIAIZwBQACSAgAhnQFAAJICACGwAUAAkgIAIb8BAQCZAgAhwAEBAJkCACEHBwEAAAABlQEBAAAAAZwBQAAAAAGdAUAAAAABsAFAAAAAAb8BAQAAAAHAAQEAAAABBBgAAO8CADDRAQAA8AIAMNUBAADzAgAw1gEAAPICACAEGAAA4wIAMNEBAADkAgAw1QEAAOcCADDWAQAA5gIAIAQYAADXAgAw0QEAANgCADDVAQAA2wIAMNYBAADaAgAgBBgAAMsCADDRAQAAzAIAMNUBAADPAgAw1gEAAM4CACADGAAAxgIAINEBAADHAgAg1QEAADIAIAAAAAAIAwAAvAIAIMEBAACKAgAgwgEAAIoCACDDAQAAigIAIMQBAACKAgAgxQEAAIoCACDGAQAAigIAIMcBAACKAgAgBAYAAJwCACCvAQAAigIAILABAACKAgAgsQEAAIoCACAHBwEAAAABlQEBAAAAAZwBQAAAAAGdAUAAAAABsAFAAAAAAb8BAQAAAAHAAQEAAAABDJUBAQAAAAGcAUAAAAABnQFAAAAAAa4BAQAAAAGvAQEAAAABsQEBAAAAAbkBAQAAAAG6AQEAAAABuwFAAAAAAbwBQAAAAAG9AQEAAAABvgEBAAAAAQeVAQEAAAABnAFAAAAAAZ0BQAAAAAGzAQAAAKgBArQBAQAAAAG1AQEAAAABtgEBAAAAAQiVAQEAAAABlgEBAAAAAZcBAQAAAAGYAQAAlAIAIJoBAAAAmgECmwFAAAAAAZwBQAAAAAGdAUAAAAABCwQAAPsCACAFAAD8AgAgCAAA_QIAIAkAAP4CACCVAQEAAAABnAFAAAAAAZ0BQAAAAAHIAQEAAAAByQEBAAAAAcoBIAAAAAHLASAAAAABAgAAAAEAIBgAAIoDACADAAAAHAAgGAAAigMAIBkAAI4DACANAAAAHAAgBAAAwQIAIAUAAMICACAIAADDAgAgCQAAxAIAIBEAAI4DACCVAQEAjgIAIZwBQACSAgAhnQFAAJICACHIAQEAjgIAIckBAQCOAgAhygEgAMACACHLASAAwAIAIQsEAADBAgAgBQAAwgIAIAgAAMMCACAJAADEAgAglQEBAI4CACGcAUAAkgIAIZ0BQACSAgAhyAEBAI4CACHJAQEAjgIAIcoBIADAAgAhywEgAMACACELBQAA_AIAIAgAAP0CACAJAAD-AgAgCgAA_wIAIJUBAQAAAAGcAUAAAAABnQFAAAAAAcgBAQAAAAHJAQEAAAABygEgAAAAAcsBIAAAAAECAAAAAQAgGAAAjwMAIAMAAAAcACAYAACPAwAgGQAAkwMAIA0AAAAcACAFAADCAgAgCAAAwwIAIAkAAMQCACAKAADFAgAgEQAAkwMAIJUBAQCOAgAhnAFAAJICACGdAUAAkgIAIcgBAQCOAgAhyQEBAI4CACHKASAAwAIAIcsBIADAAgAhCwUAAMICACAIAADDAgAgCQAAxAIAIAoAAMUCACCVAQEAjgIAIZwBQACSAgAhnQFAAJICACHIAQEAjgIAIckBAQCOAgAhygEgAMACACHLASAAwAIAIQsEAAD7AgAgCAAA_QIAIAkAAP4CACAKAAD_AgAglQEBAAAAAZwBQAAAAAGdAUAAAAAByAEBAAAAAckBAQAAAAHKASAAAAABywEgAAAAAQIAAAABACAYAACUAwAgAwAAABwAIBgAAJQDACAZAACYAwAgDQAAABwAIAQAAMECACAIAADDAgAgCQAAxAIAIAoAAMUCACARAACYAwAglQEBAI4CACGcAUAAkgIAIZ0BQACSAgAhyAEBAI4CACHJAQEAjgIAIcoBIADAAgAhywEgAMACACELBAAAwQIAIAgAAMMCACAJAADEAgAgCgAAxQIAIJUBAQCOAgAhnAFAAJICACGdAUAAkgIAIcgBAQCOAgAhyQEBAI4CACHKASAAwAIAIcsBIADAAgAhCwQAAPsCACAFAAD8AgAgCQAA_gIAIAoAAP8CACCVAQEAAAABnAFAAAAAAZ0BQAAAAAHIAQEAAAAByQEBAAAAAcoBIAAAAAHLASAAAAABAgAAAAEAIBgAAJkDACADAAAAHAAgGAAAmQMAIBkAAJ0DACANAAAAHAAgBAAAwQIAIAUAAMICACAJAADEAgAgCgAAxQIAIBEAAJ0DACCVAQEAjgIAIZwBQACSAgAhnQFAAJICACHIAQEAjgIAIckBAQCOAgAhygEgAMACACHLASAAwAIAIQsEAADBAgAgBQAAwgIAIAkAAMQCACAKAADFAgAglQEBAI4CACGcAUAAkgIAIZ0BQACSAgAhyAEBAI4CACHJAQEAjgIAIcoBIADAAgAhywEgAMACACEJAwAAqQIAIJUBAQAAAAGcAUAAAAABnQFAAAAAAZ4BAQAAAAGzAQAAAKgBArQBAQAAAAG1AQEAAAABtgEBAAAAAQIAAAANACAYAACeAwAgAwAAAAsAIBgAAJ4DACAZAACiAwAgCwAAAAsAIAMAAKICACARAACiAwAglQEBAI4CACGcAUAAkgIAIZ0BQACSAgAhngEBAI4CACGzAQAAoAKoASK0AQEAjgIAIbUBAQCZAgAhtgEBAJkCACEJAwAAogIAIJUBAQCOAgAhnAFAAJICACGdAUAAkgIAIZ4BAQCOAgAhswEAAKACqAEitAEBAI4CACG1AQEAmQIAIbYBAQCZAgAhCwQAAPsCACAFAAD8AgAgCAAA_QIAIAoAAP8CACCVAQEAAAABnAFAAAAAAZ0BQAAAAAHIAQEAAAAByQEBAAAAAcoBIAAAAAHLASAAAAABAgAAAAEAIBgAAKMDACADAAAAHAAgGAAAowMAIBkAAKcDACANAAAAHAAgBAAAwQIAIAUAAMICACAIAADDAgAgCgAAxQIAIBEAAKcDACCVAQEAjgIAIZwBQACSAgAhnQFAAJICACHIAQEAjgIAIckBAQCOAgAhygEgAMACACHLASAAwAIAIQsEAADBAgAgBQAAwgIAIAgAAMMCACAKAADFAgAglQEBAI4CACGcAUAAkgIAIZ0BQACSAgAhyAEBAI4CACHJAQEAjgIAIcoBIADAAgAhywEgAMACACEGBAYCBQoDCA4ECRQGChYHCwAIAQMAAQEDAAECAwABBxAFAQYABAEDAAEBAwABBAQXAAUYAAgZAAkaAAAAAAMLAA0eAA4fAA8AAAADCwANHgAOHwAPAQMAAQEDAAEDCwAUHgAVHwAWAAAAAwsAFB4AFR8AFgEDAAEBAwABAwsAGx4AHB8AHQAAAAMLABseABwfAB0BAwABAQMAAQMLACIeACMfACQAAAADCwAiHgAjHwAkAAAAAwsAKh4AKx8ALAAAAAMLACoeACsfACwBAwABAQMAAQMLADEeADIfADMAAAADCwAxHgAyHwAzAQYABAEGAAQDCwA4HgA5HwA6AAAAAwsAOB4AOR8AOgEDAAEBAwABAwsAPx4AQB8AQQAAAAMLAD8eAEAfAEEMAgENGwEOHgEPHwEQIAESIgETJAkUJQoVJwEWKQkXKgsaKwEbLAEcLQkgMAwhMRAiMwcjNAckNgclNwcmOAcnOgcoPAkpPREqPwcrQQksQhItQwcuRAcvRQkwSBMxSRcySgIzSwI0TAI1TQI2TgI3UAI4Ugk5Uxg6VQI7Vwk8WBk9WQI-WgI_WwlAXhpBXx5CYANDYQNEYgNFYwNGZANHZgNIaAlJaR9KawNLbQlMbiBNbwNOcANPcQlQdCFRdSVSdyZTeCZUeyZVfCZWfSZXfyZYgQEJWYIBJ1qEASZbhgEJXIcBKF2IASZeiQEmX4oBCWCNASlhjgEtYo8BBGOQAQRkkQEEZZIBBGaTAQRnlQEEaJcBCWmYAS5qmgEEa5wBCWydAS9tngEEbp8BBG-gAQlwowEwcaQBNHKmAQVzpwEFdKkBBXWqAQV2qwEFd60BBXivAQl5sAE1erIBBXu0AQl8tQE2fbYBBX63AQV_uAEJgAG7ATeBAbwBO4IBvQEGgwG-AQaEAb8BBoUBwAEGhgHBAQaHAcMBBogBxQEJiQHGATyKAcgBBosBygEJjAHLAT2NAcwBBo4BzQEGjwHOAQmQAdEBPpEB0gFC"
+ }
+ 
+ async function decodeBase64AsWasm(wasmBase64: string): Promise<WebAssembly.Module> {
+diff --git a/src/generated/internal/prismaNamespace.ts b/src/generated/internal/prismaNamespace.ts
+index 3a5e26e..3015cc9 100644
+--- a/src/generated/internal/prismaNamespace.ts
++++ b/src/generated/internal/prismaNamespace.ts
+@@ -1149,6 +1149,7 @@ export const PostsScalarFieldEnum = {
+   id: 'id',
+   content: 'content',
+   media: 'media',
++  platforms: 'platforms',
+   status: 'status',
+   ScheduledFor: 'ScheduledFor',
+   createdAt: 'createdAt',
+diff --git a/src/generated/internal/prismaNamespaceBrowser.ts b/src/generated/internal/prismaNamespaceBrowser.ts
+index 026258b..264ad9c 100644
+--- a/src/generated/internal/prismaNamespaceBrowser.ts
++++ b/src/generated/internal/prismaNamespaceBrowser.ts
+@@ -184,6 +184,7 @@ export const PostsScalarFieldEnum = {
+   id: 'id',
+   content: 'content',
+   media: 'media',
++  platforms: 'platforms',
+   status: 'status',
+   ScheduledFor: 'ScheduledFor',
+   createdAt: 'createdAt',
+diff --git a/src/generated/models/Posts.ts b/src/generated/models/Posts.ts
+index 0fb7021..e2d187f 100644
+--- a/src/generated/models/Posts.ts
++++ b/src/generated/models/Posts.ts
+@@ -50,6 +50,7 @@ export type PostsCountAggregateOutputType = {
+   id: number
+   content: number
+   media: number
++  platforms: number
+   status: number
+   ScheduledFor: number
+   createdAt: number
+@@ -85,6 +86,7 @@ export type PostsCountAggregateInputType = {
+   id?: true
+   content?: true
+   media?: true
++  platforms?: true
+   status?: true
+   ScheduledFor?: true
+   createdAt?: true
+@@ -169,6 +171,7 @@ export type PostsGroupByOutputType = {
+   id: string
+   content: string
+   media: string
++  platforms: $Enums.SocialPlatforms[]
+   status: $Enums.Status
+   ScheduledFor: Date | null
+   createdAt: Date
+@@ -201,6 +204,7 @@ export type PostsWhereInput = {
+   id?: Prisma.StringFilter<"Posts"> | string
+   content?: Prisma.StringFilter<"Posts"> | string
+   media?: Prisma.StringFilter<"Posts"> | string
++  platforms?: Prisma.EnumSocialPlatformsNullableListFilter<"Posts">
+   status?: Prisma.EnumStatusFilter<"Posts"> | $Enums.Status
+   ScheduledFor?: Prisma.DateTimeNullableFilter<"Posts"> | Date | string | null
+   createdAt?: Prisma.DateTimeFilter<"Posts"> | Date | string
+@@ -213,6 +217,7 @@ export type PostsOrderByWithRelationInput = {
+   id?: Prisma.SortOrder
+   content?: Prisma.SortOrder
+   media?: Prisma.SortOrder
++  platforms?: Prisma.SortOrder
+   status?: Prisma.SortOrder
+   ScheduledFor?: Prisma.SortOrderInput | Prisma.SortOrder
+   createdAt?: Prisma.SortOrder
+@@ -228,6 +233,7 @@ export type PostsWhereUniqueInput = Prisma.AtLeast<{
+   NOT?: Prisma.PostsWhereInput | Prisma.PostsWhereInput[]
+   content?: Prisma.StringFilter<"Posts"> | string
+   media?: Prisma.StringFilter<"Posts"> | string
++  platforms?: Prisma.EnumSocialPlatformsNullableListFilter<"Posts">
+   status?: Prisma.EnumStatusFilter<"Posts"> | $Enums.Status
+   ScheduledFor?: Prisma.DateTimeNullableFilter<"Posts"> | Date | string | null
+   createdAt?: Prisma.DateTimeFilter<"Posts"> | Date | string
+@@ -240,6 +246,7 @@ export type PostsOrderByWithAggregationInput = {
+   id?: Prisma.SortOrder
+   content?: Prisma.SortOrder
+   media?: Prisma.SortOrder
++  platforms?: Prisma.SortOrder
+   status?: Prisma.SortOrder
+   ScheduledFor?: Prisma.SortOrderInput | Prisma.SortOrder
+   createdAt?: Prisma.SortOrder
+@@ -257,6 +264,7 @@ export type PostsScalarWhereWithAggregatesInput = {
+   id?: Prisma.StringWithAggregatesFilter<"Posts"> | string
+   content?: Prisma.StringWithAggregatesFilter<"Posts"> | string
+   media?: Prisma.StringWithAggregatesFilter<"Posts"> | string
++  platforms?: Prisma.EnumSocialPlatformsNullableListFilter<"Posts">
+   status?: Prisma.EnumStatusWithAggregatesFilter<"Posts"> | $Enums.Status
+   ScheduledFor?: Prisma.DateTimeNullableWithAggregatesFilter<"Posts"> | Date | string | null
+   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Posts"> | Date | string
+@@ -268,6 +276,7 @@ export type PostsCreateInput = {
+   id?: string
+   content: string
+   media: string
++  platforms?: Prisma.PostsCreateplatformsInput | $Enums.SocialPlatforms[]
+   status: $Enums.Status
+   ScheduledFor?: Date | string | null
+   createdAt?: Date | string
+@@ -279,6 +288,7 @@ export type PostsUncheckedCreateInput = {
+   id?: string
+   content: string
+   media: string
++  platforms?: Prisma.PostsCreateplatformsInput | $Enums.SocialPlatforms[]
+   status: $Enums.Status
+   ScheduledFor?: Date | string | null
+   createdAt?: Date | string
+@@ -290,6 +300,7 @@ export type PostsUpdateInput = {
+   id?: Prisma.StringFieldUpdateOperationsInput | string
+   content?: Prisma.StringFieldUpdateOperationsInput | string
+   media?: Prisma.StringFieldUpdateOperationsInput | string
++  platforms?: Prisma.PostsUpdateplatformsInput | $Enums.SocialPlatforms[]
+   status?: Prisma.EnumStatusFieldUpdateOperationsInput | $Enums.Status
+   ScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+@@ -301,6 +312,7 @@ export type PostsUncheckedUpdateInput = {
+   id?: Prisma.StringFieldUpdateOperationsInput | string
+   content?: Prisma.StringFieldUpdateOperationsInput | string
+   media?: Prisma.StringFieldUpdateOperationsInput | string
++  platforms?: Prisma.PostsUpdateplatformsInput | $Enums.SocialPlatforms[]
+   status?: Prisma.EnumStatusFieldUpdateOperationsInput | $Enums.Status
+   ScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+@@ -312,6 +324,7 @@ export type PostsCreateManyInput = {
+   id?: string
+   content: string
+   media: string
++  platforms?: Prisma.PostsCreateplatformsInput | $Enums.SocialPlatforms[]
+   status: $Enums.Status
+   ScheduledFor?: Date | string | null
+   createdAt?: Date | string
+@@ -323,6 +336,7 @@ export type PostsUpdateManyMutationInput = {
+   id?: Prisma.StringFieldUpdateOperationsInput | string
+   content?: Prisma.StringFieldUpdateOperationsInput | string
+   media?: Prisma.StringFieldUpdateOperationsInput | string
++  platforms?: Prisma.PostsUpdateplatformsInput | $Enums.SocialPlatforms[]
+   status?: Prisma.EnumStatusFieldUpdateOperationsInput | $Enums.Status
+   ScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+@@ -333,6 +347,7 @@ export type PostsUncheckedUpdateManyInput = {
+   id?: Prisma.StringFieldUpdateOperationsInput | string
+   content?: Prisma.StringFieldUpdateOperationsInput | string
+   media?: Prisma.StringFieldUpdateOperationsInput | string
++  platforms?: Prisma.PostsUpdateplatformsInput | $Enums.SocialPlatforms[]
+   status?: Prisma.EnumStatusFieldUpdateOperationsInput | $Enums.Status
+   ScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+@@ -350,10 +365,19 @@ export type PostsOrderByRelationAggregateInput = {
+   _count?: Prisma.SortOrder
+ }
+ 
++export type EnumSocialPlatformsNullableListFilter<$PrismaModel = never> = {
++  equals?: $Enums.SocialPlatforms[] | Prisma.ListEnumSocialPlatformsFieldRefInput<$PrismaModel> | null
++  has?: $Enums.SocialPlatforms | Prisma.EnumSocialPlatformsFieldRefInput<$PrismaModel> | null
++  hasEvery?: $Enums.SocialPlatforms[] | Prisma.ListEnumSocialPlatformsFieldRefInput<$PrismaModel>
++  hasSome?: $Enums.SocialPlatforms[] | Prisma.ListEnumSocialPlatformsFieldRefInput<$PrismaModel>
++  isEmpty?: boolean
++}
++
+ export type PostsCountOrderByAggregateInput = {
+   id?: Prisma.SortOrder
+   content?: Prisma.SortOrder
+   media?: Prisma.SortOrder
++  platforms?: Prisma.SortOrder
+   status?: Prisma.SortOrder
+   ScheduledFor?: Prisma.SortOrder
+   createdAt?: Prisma.SortOrder
+@@ -425,6 +449,15 @@ export type PostsUncheckedUpdateManyWithoutUserNestedInput = {
+   deleteMany?: Prisma.PostsScalarWhereInput | Prisma.PostsScalarWhereInput[]
+ }
+ 
++export type PostsCreateplatformsInput = {
++  set: $Enums.SocialPlatforms[]
++}
++
++export type PostsUpdateplatformsInput = {
++  set?: $Enums.SocialPlatforms[]
++  push?: $Enums.SocialPlatforms | $Enums.SocialPlatforms[]
++}
++
+ export type EnumStatusFieldUpdateOperationsInput = {
+   set?: $Enums.Status
+ }
+@@ -433,6 +466,7 @@ export type PostsCreateWithoutUserInput = {
+   id?: string
+   content: string
+   media: string
++  platforms?: Prisma.PostsCreateplatformsInput | $Enums.SocialPlatforms[]
+   status: $Enums.Status
+   ScheduledFor?: Date | string | null
+   createdAt?: Date | string
+@@ -443,6 +477,7 @@ export type PostsUncheckedCreateWithoutUserInput = {
+   id?: string
+   content: string
+   media: string
++  platforms?: Prisma.PostsCreateplatformsInput | $Enums.SocialPlatforms[]
+   status: $Enums.Status
+   ScheduledFor?: Date | string | null
+   createdAt?: Date | string
+@@ -482,6 +517,7 @@ export type PostsScalarWhereInput = {
+   id?: Prisma.StringFilter<"Posts"> | string
+   content?: Prisma.StringFilter<"Posts"> | string
+   media?: Prisma.StringFilter<"Posts"> | string
++  platforms?: Prisma.EnumSocialPlatformsNullableListFilter<"Posts">
+   status?: Prisma.EnumStatusFilter<"Posts"> | $Enums.Status
+   ScheduledFor?: Prisma.DateTimeNullableFilter<"Posts"> | Date | string | null
+   createdAt?: Prisma.DateTimeFilter<"Posts"> | Date | string
+@@ -493,6 +529,7 @@ export type PostsCreateManyUserInput = {
+   id?: string
+   content: string
+   media: string
++  platforms?: Prisma.PostsCreateplatformsInput | $Enums.SocialPlatforms[]
+   status: $Enums.Status
+   ScheduledFor?: Date | string | null
+   createdAt?: Date | string
+@@ -503,6 +540,7 @@ export type PostsUpdateWithoutUserInput = {
+   id?: Prisma.StringFieldUpdateOperationsInput | string
+   content?: Prisma.StringFieldUpdateOperationsInput | string
+   media?: Prisma.StringFieldUpdateOperationsInput | string
++  platforms?: Prisma.PostsUpdateplatformsInput | $Enums.SocialPlatforms[]
+   status?: Prisma.EnumStatusFieldUpdateOperationsInput | $Enums.Status
+   ScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+@@ -513,6 +551,7 @@ export type PostsUncheckedUpdateWithoutUserInput = {
+   id?: Prisma.StringFieldUpdateOperationsInput | string
+   content?: Prisma.StringFieldUpdateOperationsInput | string
+   media?: Prisma.StringFieldUpdateOperationsInput | string
++  platforms?: Prisma.PostsUpdateplatformsInput | $Enums.SocialPlatforms[]
+   status?: Prisma.EnumStatusFieldUpdateOperationsInput | $Enums.Status
+   ScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+@@ -523,6 +562,7 @@ export type PostsUncheckedUpdateManyWithoutUserInput = {
+   id?: Prisma.StringFieldUpdateOperationsInput | string
+   content?: Prisma.StringFieldUpdateOperationsInput | string
+   media?: Prisma.StringFieldUpdateOperationsInput | string
++  platforms?: Prisma.PostsUpdateplatformsInput | $Enums.SocialPlatforms[]
+   status?: Prisma.EnumStatusFieldUpdateOperationsInput | $Enums.Status
+   ScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+@@ -535,6 +575,7 @@ export type PostsSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
+   id?: boolean
+   content?: boolean
+   media?: boolean
++  platforms?: boolean
+   status?: boolean
+   ScheduledFor?: boolean
+   createdAt?: boolean
+@@ -547,6 +588,7 @@ export type PostsSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensi
+   id?: boolean
+   content?: boolean
+   media?: boolean
++  platforms?: boolean
+   status?: boolean
+   ScheduledFor?: boolean
+   createdAt?: boolean
+@@ -559,6 +601,7 @@ export type PostsSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensi
+   id?: boolean
+   content?: boolean
+   media?: boolean
++  platforms?: boolean
+   status?: boolean
+   ScheduledFor?: boolean
+   createdAt?: boolean
+@@ -571,6 +614,7 @@ export type PostsSelectScalar = {
+   id?: boolean
+   content?: boolean
+   media?: boolean
++  platforms?: boolean
+   status?: boolean
+   ScheduledFor?: boolean
+   createdAt?: boolean
+@@ -578,7 +622,7 @@ export type PostsSelectScalar = {
+   userId?: boolean
+ }
+ 
+-export type PostsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "content" | "media" | "status" | "ScheduledFor" | "createdAt" | "updatedAt" | "userId", ExtArgs["result"]["posts"]>
++export type PostsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "content" | "media" | "platforms" | "status" | "ScheduledFor" | "createdAt" | "updatedAt" | "userId", ExtArgs["result"]["posts"]>
+ export type PostsInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
+ }
+@@ -598,6 +642,7 @@ export type $PostsPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
+     id: string
+     content: string
+     media: string
++    platforms: $Enums.SocialPlatforms[]
+     status: $Enums.Status
+     ScheduledFor: Date | null
+     createdAt: Date
+@@ -1030,6 +1075,7 @@ export interface PostsFieldRefs {
+   readonly id: Prisma.FieldRef<"Posts", 'String'>
+   readonly content: Prisma.FieldRef<"Posts", 'String'>
+   readonly media: Prisma.FieldRef<"Posts", 'String'>
++  readonly platforms: Prisma.FieldRef<"Posts", 'SocialPlatforms[]'>
+   readonly status: Prisma.FieldRef<"Posts", 'Status'>
+   readonly ScheduledFor: Prisma.FieldRef<"Posts", 'DateTime'>
+   readonly createdAt: Prisma.FieldRef<"Posts", 'DateTime'>
+diff --git a/src/styles/globals.css b/src/styles/globals.css
+index 90240f5..6621577 100644
+--- a/src/styles/globals.css
++++ b/src/styles/globals.css
+@@ -1,4 +1,8 @@
+ @import "tailwindcss";
++@import "tw-animate-css";
++@import "shadcn/tailwind.css";
++
++@custom-variant dark (&:is(.dark *));
+ 
+ /* variables de colores */
+ :root {
+@@ -6,13 +10,38 @@
+   --color-secondary: #7170b6;
+   --color-tertiary: #a54100;
+   --color-lowopacity: #eef2ff;
+-}
+-
+-@media (prefers-color-scheme: dark) {
+-  :root {
+-    --background: #0a0a0a;
+-    --foreground: #ededed;
+-  }
++  --background: oklch(1 0 0);
++  --foreground: oklch(0.145 0 0);
++  --card: oklch(1 0 0);
++  --card-foreground: oklch(0.145 0 0);
++  --popover: oklch(1 0 0);
++  --popover-foreground: oklch(0.145 0 0);
++  --primary: oklch(0.205 0 0);
++  --primary-foreground: oklch(0.985 0 0);
++  --secondary: oklch(0.97 0 0);
++  --secondary-foreground: oklch(0.205 0 0);
++  --muted: oklch(0.97 0 0);
++  --muted-foreground: oklch(0.556 0 0);
++  --accent: oklch(0.97 0 0);
++  --accent-foreground: oklch(0.205 0 0);
++  --destructive: oklch(0.577 0.245 27.325);
++  --border: oklch(0.922 0 0);
++  --input: oklch(0.922 0 0);
++  --ring: oklch(0.708 0 0);
++  --chart-1: oklch(0.87 0 0);
++  --chart-2: oklch(0.556 0 0);
++  --chart-3: oklch(0.439 0 0);
++  --chart-4: oklch(0.371 0 0);
++  --chart-5: oklch(0.269 0 0);
++  --radius: 0.625rem;
++  --sidebar: oklch(0.985 0 0);
++  --sidebar-foreground: oklch(0.145 0 0);
++  --sidebar-primary: oklch(0.205 0 0);
++  --sidebar-primary-foreground: oklch(0.985 0 0);
++  --sidebar-accent: oklch(0.97 0 0);
++  --sidebar-accent-foreground: oklch(0.205 0 0);
++  --sidebar-border: oklch(0.922 0 0);
++  --sidebar-ring: oklch(0.708 0 0);
+ }
+ 
+ .container {
+@@ -50,7 +79,6 @@ p{
+   color: #4b5563;
+ }
+ 
+-
+ .fc {
+   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+ }
+@@ -111,4 +139,93 @@ p{
+ .calendar-tooltip span{
+   cursor: pointer;
+   color: #6b7280;
++}
++
++@theme inline {
++  --font-heading: var(--font-sans);
++  --font-sans: var(--font-sans);
++  --color-sidebar-ring: var(--sidebar-ring);
++  --color-sidebar-border: var(--sidebar-border);
++  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
++  --color-sidebar-accent: var(--sidebar-accent);
++  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
++  --color-sidebar-primary: var(--sidebar-primary);
++  --color-sidebar-foreground: var(--sidebar-foreground);
++  --color-sidebar: var(--sidebar);
++  --color-chart-5: var(--chart-5);
++  --color-chart-4: var(--chart-4);
++  --color-chart-3: var(--chart-3);
++  --color-chart-2: var(--chart-2);
++  --color-chart-1: var(--chart-1);
++  --color-ring: var(--ring);
++  --color-input: var(--input);
++  --color-border: var(--border);
++  --color-destructive: var(--destructive);
++  --color-accent-foreground: var(--accent-foreground);
++  --color-accent: var(--accent);
++  --color-muted-foreground: var(--muted-foreground);
++  --color-muted: var(--muted);
++  --color-secondary-foreground: var(--secondary-foreground);
++  --color-secondary: var(--secondary);
++  --color-primary-foreground: var(--primary-foreground);
++  --color-primary: var(--primary);
++  --color-popover-foreground: var(--popover-foreground);
++  --color-popover: var(--popover);
++  --color-card-foreground: var(--card-foreground);
++  --color-card: var(--card);
++  --color-foreground: var(--foreground);
++  --color-background: var(--background);
++  --radius-sm: calc(var(--radius) * 0.6);
++  --radius-md: calc(var(--radius) * 0.8);
++  --radius-lg: var(--radius);
++  --radius-xl: calc(var(--radius) * 1.4);
++  --radius-2xl: calc(var(--radius) * 1.8);
++  --radius-3xl: calc(var(--radius) * 2.2);
++  --radius-4xl: calc(var(--radius) * 2.6);
++}
++
++.dark {
++  --background: oklch(0.145 0 0);
++  --foreground: oklch(0.985 0 0);
++  --card: oklch(0.205 0 0);
++  --card-foreground: oklch(0.985 0 0);
++  --popover: oklch(0.205 0 0);
++  --popover-foreground: oklch(0.985 0 0);
++  --primary: oklch(0.922 0 0);
++  --primary-foreground: oklch(0.205 0 0);
++  --secondary: oklch(0.269 0 0);
++  --secondary-foreground: oklch(0.985 0 0);
++  --muted: oklch(0.269 0 0);
++  --muted-foreground: oklch(0.708 0 0);
++  --accent: oklch(0.269 0 0);
++  --accent-foreground: oklch(0.985 0 0);
++  --destructive: oklch(0.704 0.191 22.216);
++  --border: oklch(1 0 0 / 10%);
++  --input: oklch(1 0 0 / 15%);
++  --ring: oklch(0.556 0 0);
++  --chart-1: oklch(0.87 0 0);
++  --chart-2: oklch(0.556 0 0);
++  --chart-3: oklch(0.439 0 0);
++  --chart-4: oklch(0.371 0 0);
++  --chart-5: oklch(0.269 0 0);
++  --sidebar: oklch(0.205 0 0);
++  --sidebar-foreground: oklch(0.985 0 0);
++  --sidebar-primary: oklch(0.488 0.243 264.376);
++  --sidebar-primary-foreground: oklch(0.985 0 0);
++  --sidebar-accent: oklch(0.269 0 0);
++  --sidebar-accent-foreground: oklch(0.985 0 0);
++  --sidebar-border: oklch(1 0 0 / 10%);
++  --sidebar-ring: oklch(0.556 0 0);
++}
++
++@layer base {
++  * {
++    @apply border-border outline-ring/50;
++  }
++  body {
++    @apply bg-background text-foreground;
++  }
++  html {
++    @apply font-sans;
++  }
+ }
+\ No newline at end of file
+
+diff --git a/components.json b/components.json
+new file mode 100644
+index 0000000..fb65d7c
+--- /dev/null
++++ b/components.json
+@@ -0,0 +1,25 @@
++{
++  "$schema": "https://ui.shadcn.com/schema.json",
++  "style": "base-vega",
++  "rsc": true,
++  "tsx": true,
++  "tailwind": {
++    "config": "",
++    "css": "src/styles/globals.css",
++    "baseColor": "neutral",
++    "cssVariables": true,
++    "prefix": ""
++  },
++  "iconLibrary": "lucide",
++  "rtl": false,
++  "aliases": {
++    "components": "@/components",
++    "utils": "@/lib/utils",
++    "ui": "@/components/ui",
++    "lib": "@/lib",
++    "hooks": "@/hooks"
++  },
++  "menuColor": "default",
++  "menuAccent": "subtle",
++  "registries": {}
++}
+
+diff --git a/prisma/migrations/20260910125129_add_post_platforms/migration.sql b/prisma/migrations/20260910125129_add_post_platforms/migration.sql
+new file mode 100644
+index 0000000..759c2ec
+--- /dev/null
++++ b/prisma/migrations/20260910125129_add_post_platforms/migration.sql
+@@ -0,0 +1,2 @@
++-- AlterTable
++ALTER TABLE "Posts" ADD COLUMN     "platforms" "SocialPlatforms"[];
+
+diff --git a/src/app/calendar/calendarView.tsx b/src/app/calendar/calendarView.tsx
+new file mode 100644
+index 0000000..656d645
+--- /dev/null
++++ b/src/app/calendar/calendarView.tsx
+@@ -0,0 +1,151 @@
++"use client";
++
++import FullCalendar from "@fullcalendar/react";
++import dayGridPlugin from "@fullcalendar/daygrid";
++import timeGridPlugin from "@fullcalendar/timegrid";
++import SideNav from "@/components/Sidenav";
++import Card from "@/components/Card";
++import Charts from "./_sections/Charts";
++import { useRef } from "react";
++import { TriangleAlert, BellRing } from "lucide-react";
++
++interface CalendarEvent {
++  id: string;
++  title: string;
++  start: string;
++  extendedProps: {
++    description: string;
++    platforms: string[];
++    media: string;
++    status: string;
++  };
++}
++
++interface CalendarViewProps {
++  events: CalendarEvent[];
++}
++
++export default function CalendarView({ events }: CalendarViewProps) {
++  const hoverTooltipRef = useRef<HTMLDivElement | null>(null);
++  const pinnedTooltipRef = useRef<HTMLDivElement | null>(null);
++
++  const createTooltip = (info: any) => {
++    const tooltip = document.createElement("div");
++    tooltip.className = "calendar-tooltip";
++    tooltip.innerHTML = `
++        <div class="flex flex-col">
++            <strong>${info.event.extendedProps.platforms?.join(", ") || info.event.title}</strong><br>
++            <img src="${info.event.extendedProps.media || ""}" alt="Media" class="tooltip-media" width="100"/>
++            <span>${info.event.extendedProps.status || ""}</span>
++        </div>
++        "${info.event.extendedProps.description || "No description"}"<br>
++        Fecha: ${info.event.start.toLocaleString()}
++    `;
++    document.body.appendChild(tooltip);
++    tooltip.style.left = info.jsEvent.pageX + 10 + "px";
++    tooltip.style.top = info.jsEvent.pageY + 10 + "px";
++    return tooltip;
++  };
++
++  const renderEventContent = (eventInfo: any) => {
++    const { media, platforms, status } = eventInfo.event.extendedProps;
++
++    return (
++        <div className="flex flex-col items-center gap-1 overflow-hidden p-0.5 w-full">
++        {media && (
++            <img src={media} alt="post" className="w-12 h-12 rounded object-cover shrink-0" />
++        )}
++        <span className="text-xs truncate">
++            {platforms?.[0]}
++            {platforms?.length > 1 ? ` +${platforms.length - 1}` : ""}
++        </span>
++        </div>
++    );
++};
++
++  const removeTooltip = (ref: any) => {
++    if (ref.current) {
++      ref.current.remove();
++      ref.current = null;
++    }
++  };
++
++  const handleEventMouseEnter = (info: any) => {
++    if (pinnedTooltipRef.current) return;
++    hoverTooltipRef.current = createTooltip(info);
++  };
++
++  const handleEventMouseLeave = () => {
++    removeTooltip(hoverTooltipRef);
++  };
++
++  const handleDateClick = (info: any) => {
++    if (pinnedTooltipRef.current) {
++      removeTooltip(pinnedTooltipRef);
++      return;
++    }
++    removeTooltip(hoverTooltipRef);
++    pinnedTooltipRef.current = createTooltip(info);
++  };
++
++  return (
++    <main className="mx-auto bg-indigo-10 flex bg-slate-50">
++      <SideNav />
++
++      <section id="calendar" className="calendar-container container py-20 px-20 mt-10">
++        <div className="mb-10">
++          <FullCalendar
++            plugins={[dayGridPlugin, timeGridPlugin]}
++            headerToolbar={{
++              start: "prev,next today",
++              center: "title",
++              end: "dayGridMonth,dayGridWeek,timeGridDay",
++            }}
++            initialView="dayGridMonth"
++            locale="es"
++            fixedWeekCount={false}
++            height="600px"
++            events={events}
++            editable={false}
++            eventContent={renderEventContent}
++            eventMouseEnter={handleEventMouseEnter}
++            eventMouseLeave={handleEventMouseLeave}
++            eventClick={handleDateClick}
++            slotDuration="00:30:00"
++            slotLabelFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
++            slotMinTime="06:00:00"
++            slotMaxTime="22:00:00"
++            allDaySlot={true}
++          />
++        </div>
++
++        <div className="grid grid-cols-12 gap-5">
++          <Card className="content-error-messages col-span-4">
++            <h4 className="mb-5">Brecha de contenido</h4>
++            <div className="content-message flex flex-row mb-5">
++              <div className="icon_info p-3 bg-red-200 rounded-md text-red-600 mr-2 w-fit">
++                <TriangleAlert />
++              </div>
++              <div className="flex flex-col text-sm content-center">
++                <div className="font-bold">Semana 4 sin posts</div>
++                <div>Sin posts el dia 04 de Octubre</div>
++              </div>
++            </div>
++            <div className="content-message flex flex-row mb-5">
++              <div className="icon_info p-3 bg-yellow-200 rounded-md text-yellow-600 mr-2 w-fit">
++                <BellRing />
++              </div>
++              <div className="flex flex-col text-sm content-center">
++                <div className="font-bold">Oportunidad de post</div>
++                <div>Mejor tiempo: Hoy a las 8:00am</div>
++              </div>
++            </div>
++          </Card>
++          <Card className="campain-performance col-span-8">
++            <Charts />
++          </Card>
++        </div>
++      </section>
++    </main>
++  );
++}
+\ No newline at end of file
+
+diff --git a/src/app/post/action.tsx b/src/app/post/action.tsx
+new file mode 100644
+index 0000000..0d4c088
+--- /dev/null
++++ b/src/app/post/action.tsx
+@@ -0,0 +1,128 @@
++"use server"
++
++import { headers } from "next/headers";
++import { writeFile, mkdir } from "fs/promises";
++import path from "path";
++import { auth } from "@/lib/auth";
++import { prisma } from "@/lib/prisma";
++
++import { postSchema } from "./schema";
++
++const initialState: ActionResponse = {
++    success: false,
++    message: "",
++};
++
++export async function createPost(
++  prevState: ActionResponse,
++  formData: FormData
++): Promise<ActionResponse> {
++  const session = await auth.api.getSession({ headers: await headers() });
++
++  if (!session?.user) {
++    return {
++      ...initialState,
++      id: crypto.randomUUID(),
++      success: false,
++      errors: { _form: ["Debes iniciar sesión para publicar."] },
++    };
++  }
++
++  const raw = {
++    content: formData.get("content")?.toString() ?? "",
++    platforms: formData.getAll("platforms").map((p) => p.toString()),
++    scheduleEnabled: formData.get("scheduleEnabled")?.toString() ?? "false",
++    scheduledDate: formData.get("scheduledDate")?.toString() || undefined,
++    scheduledTime: formData.get("scheduledTime")?.toString() || undefined,
++  };
++
++  const parsed = postSchema.safeParse(raw);
++
++  if (!parsed.success) {
++    return {
++      ...initialState,
++      id: crypto.randomUUID(),
++      success: false,
++      errors: parsed.error.flatten().fieldErrors,
++    };
++  }
++
++  const mediaFile = formData.get("media");
++
++  if (!(mediaFile instanceof File) || mediaFile.size === 0) {
++    return {
++      ...initialState,
++      id: crypto.randomUUID(),
++      success: false,
++      errors: { media: ["Debes subir una imagen para el post."] },
++    };
++  }
++
++  if (!mediaFile.type.startsWith("image/")) {
++    return {
++      ...initialState,
++      id: crypto.randomUUID(),
++      success: false,
++      errors: { media: ["El archivo debe ser una imagen."] },
++    };
++  }
++
++  let mediaPath: string;
++
++  try {
++    const bytes = await mediaFile.arrayBuffer();
++    const buffer = Buffer.from(bytes);
++    const extension = mediaFile.type.split("/")[1] || "jpg";
++    const filename = `post-${session.user.id}-${Date.now()}.${extension}`;
++    const uploadDir = path.join(process.cwd(), "public", "uploads");
++
++    await mkdir(uploadDir, { recursive: true });
++    await writeFile(path.join(uploadDir, filename), buffer);
++
++    mediaPath = `/uploads/${filename}`;
++  } catch (error) {
++    console.error("Error guardando la imagen:", error);
++    return {
++      ...initialState,
++      id: crypto.randomUUID(),
++      success: false,
++      errors: { _form: ["No se pudo guardar la imagen. Intenta nuevamente."] },
++    };
++  }
++
++  const { content, platforms, scheduleEnabled, scheduledDate, scheduledTime } = parsed.data;
++
++  const scheduledFor =
++    scheduleEnabled && scheduledDate && scheduledTime
++      ? new Date(`${scheduledDate}T${scheduledTime}:00`)
++      : null;
++
++  try {
++    await prisma.posts.create({
++      data: {
++        content,
++        media: mediaPath,
++        platforms,
++        status: scheduledFor ? "scheduled" : "draft",
++        ScheduledFor: scheduledFor,
++        userId: session.user.id,
++      },
++    });
++  } catch (error) {
++    console.error("Error creando el post:", error);
++    return {
++      ...initialState,
++      id: crypto.randomUUID(),
++      success: false,
++      errors: { _form: ["No se pudo guardar el post. Intenta nuevamente."] },
++    };
++  }
++
++  return {
++    ...initialState,
++    id: crypto.randomUUID(),
++    success: true,
++    message: scheduledFor ? "Post programado correctamente." : "Post guardado como borrador.",
++  };
++}
++
+
+diff --git a/src/app/post/imageUpload.tsx b/src/app/post/imageUpload.tsx
+new file mode 100644
+index 0000000..02ae234
+--- /dev/null
++++ b/src/app/post/imageUpload.tsx
+@@ -0,0 +1,156 @@
++"use client";
++
++import { useCallback, useRef, useState } from "react";
++import Cropper, { Area } from "react-easy-crop";
++import Image from "next/image";
++import { CloudUpload, RotateCcw } from "lucide-react";
++import Card from "@/components/Card";
++import Button from "@/components/Button";
++import { getCroppedImg } from "@/lib/cropImage";
++
++interface ImageUploadProps {
++    onImageReady: (file: File | null) => void;
++    error?: string[];
++}
++
++export default function ImageUpload({ onImageReady, error }: ImageUploadProps) {
++    const inputRef = useRef<HTMLInputElement>(null);
++    const [imageSrc, setImageSrc] = useState<string | null>(null);
++    const [preview, setPreview] = useState<string | null>(null);
++    const [crop, setCrop] = useState({ x: 0, y: 0 });
++    const [zoom, setZoom] = useState(1);
++    const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(
++        null,
++    );
++
++    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
++        const file = e.target.files?.[0];
++        if (!file) return;
++        setImageSrc(URL.createObjectURL(file));
++        setPreview(null);
++        onImageReady(null);
++    };
++
++    const onCropComplete = useCallback((_: Area, areaPixels: Area) => {
++        setCroppedAreaPixels(areaPixels);
++    }, []);
++
++    const handleConfirmCrop = async () => {
++        if (!imageSrc || !croppedAreaPixels) return;
++        const blob = await getCroppedImg(imageSrc, croppedAreaPixels);
++        const file = new File([blob], `post-${Date.now()}.jpg`, {
++            type: "image/jpeg",
++        });
++        setPreview(URL.createObjectURL(blob));
++        setImageSrc(null);
++        onImageReady(file);
++    };
++
++    const handleReset = () => {
++        setImageSrc(null);
++        setPreview(null);
++        setCroppedAreaPixels(null);
++        onImageReady(null);
++        if (inputRef.current) inputRef.current.value = "";
++    };
++
++    return (
++        <Card className="bg-indigo-50 p-10 mb-2">
++            <input
++                ref={inputRef}
++                type="file"
++                accept="image/*"
++                className="hidden"
++                onChange={handleFileChange}
++            />
++
++            {!imageSrc && !preview && (
++                <div
++                    className="w-full text-center flex flex-col items-center justify-center cursor-pointer"
++                    onClick={() => inputRef.current?.click()}
++                >
++                    <div className="p-5 bg-white rounded-full text-indigo-600 mb-2 w-fit">
++                        <CloudUpload size={32} />
++                    </div>
++                    <div className="font-bold mb-2">
++                        Arrastra y suelta archivos
++                    </div>
++                    <div className="text-sm text-neutral-400 mb-10">
++                        Sube imagenes en alta resolucion (Max. 10MB)
++                    </div>
++                    <div className="font-bold text-indigo-600">
++                        Buscar archivos
++                    </div>
++                </div>
++            )}
++
++            {imageSrc && (
++                <div className="flex flex-col gap-4">
++                    <div className="relative w-full h-[400px] bg-black rounded-xl overflow-hidden">
++                        <Cropper
++                            image={imageSrc}
++                            crop={crop}
++                            zoom={zoom}
++                            aspect={4/5}
++                            onCropChange={setCrop}
++                            onZoomChange={setZoom}
++                            onCropComplete={onCropComplete}
++                        />
++                    </div>
++                    <input
++                        type="range"
++                        min={1}
++                        max={3}
++                        step={0.1}
++                        value={zoom}
++                        onChange={(e) => setZoom(Number(e.target.value))}
++                    />
++                    <div className="flex gap-3">
++                        <Button
++                            type="button"
++                            variant="white"
++                            onClick={handleReset}
++                            className="flex-1"
++                        >
++                            Cancelar
++                        </Button>
++                        <Button
++                            type="button"
++                            variant="primary"
++                            onClick={handleConfirmCrop}
++                            className="flex-1"
++                        >
++                            Confirmar recorte
++                        </Button>
++                    </div>
++                </div>
++            )}
++
++            {preview && (
++                <div className="relative w-full flex flex-col items-center gap-3">
++                    <div className="relative w-48 h-48 rounded-xl overflow-hidden">
++                        <Image
++                            src={preview}
++                            alt="preview"
++                            fill
++                            className="object-cover"
++                        />
++                    </div>
++                    <button
++                        type="button"
++                        onClick={handleReset}
++                        className="flex items-center gap-1 text-sm text-indigo-600 font-bold"
++                    >
++                        <RotateCcw size={14} /> Cambiar imagen
++                    </button>
++                </div>
++            )}
++
++            {error?.map((err) => (
++                <p key={err} className="text-red-500 text-sm mt-2">
++                    {err}
++                </p>
++            ))}
++        </Card>
++    );
++}
+
+diff --git a/src/app/post/schema.tsx b/src/app/post/schema.tsx
+new file mode 100644
+index 0000000..6950c9d
+--- /dev/null
++++ b/src/app/post/schema.tsx
+@@ -0,0 +1,27 @@
++import { z } from "zod";
++
++export const postSchema = z.object({
++    content: z
++        .string()
++        .min(1, "El contenido no puede estar vacío")
++        .max(2200, "El contenido es demasiado largo"),
++    platforms: z
++        .array(z.enum(["X", "Facebook", "Instagram", "Tiktok"]))
++        .min(1, "Selecciona al menos una red social"),
++    scheduleEnabled: z
++        .string()
++        .transform((v) => v === "true")
++        .default(false),
++    scheduledDate: z.string().optional(),
++    scheduledTime: z.string().optional(),
++})
++.superRefine((data, ctx) => {
++    if (data.scheduleEnabled) {
++        if (!data.scheduledDate) {
++            ctx.addIssue({ code: "custom", message: "Selecciona una fecha", path: ["scheduledDate"] });
++        }
++        if (!data.scheduledTime) {
++            ctx.addIssue({ code: "custom", message: "Selecciona una hora", path: ["scheduledTime"] });
++        }
++    }
++});
+\ No newline at end of file
+
+diff --git a/src/components/NavbarClient.tsx b/src/components/NavbarClient.tsx
+new file mode 100644
+index 0000000..e618838
+--- /dev/null
++++ b/src/components/NavbarClient.tsx
+@@ -0,0 +1,213 @@
++"use client";
++
++import Link from "next/link";
++import { usePathname, useRouter } from "next/navigation";
++import { authClient } from "@/lib/auth-client";
++
++import { useEffect, useState } from "react";
++import { SmilePlus, Menu, X } from "lucide-react";
++import Button from "@/components/Button";
++import Dropdown from "@/components/Dropdown";
++import DropdownItem from "@/components/DropdownItem";
++import Image from "next/image";
++
++const sections = [
++    { id: "", label: "Inicio" },
++    { id: "header", label: "Sobre el Proyecto" },
++    { id: "comunity", label: "Comunidad" },
++    { id: "join", label: "Unete a Nosotros" },
++];
++
++// Tipalo con el tipo real de tu sesión (el que devuelve auth.api.getSession / better-auth)
++type NavbarClientProps = {
++    session: Awaited<ReturnType<typeof authClient.getSession>>["data"];
++};
++
++export default function NavbarClient({ session }: NavbarClientProps) {
++    const router = useRouter();
++
++    const [isOpen, setIsOpen] = useState(false);
++    const [active, setActive] = useState("");
++    const pathname = usePathname();
++
++    useEffect(() => {
++        const observers: IntersectionObserver[] = [];
++
++        sections.forEach(({ id }) => {
++            const element = document.getElementById(id);
++            if (!element) return;
++
++            const observer = new IntersectionObserver(
++                ([entry]) => {
++                    if (entry?.isIntersecting) {
++                        setActive(id);
++                    }
++                },
++                {
++                    root: null,
++                    rootMargin: "-50% 0px -50% 0px",
++                    threshold: 0,
++                }
++            );
++            observer.observe(element);
++            observers.push(observer);
++        });
++
++        return () => {
++            observers.forEach((observer) => observer.disconnect());
++        };
++    }, []);
++
++    const handleSignOut = async () => {
++        await authClient.signOut();
++        router.push("/login");
++        router.refresh(); 
++    };
++
++    return (
++        <nav className="fixed flex h-[80px] w-full px-4 md:px-8 lg:px-8 xl:px-8 text-gray-500 bg-neutral-50 z-90 shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
++            <div id="logo-container" className="absolute left-4 top-1/2 -translate-y-1/2">
++                <Link href="/" className="flex flex-row gap-2 items-center text-black">
++                    <div>
++                        <SmilePlus size={30} />
++                    </div>
++                    <div>
++                        <span className="text-xl font-bold text-indigo-600">Social</span>
++                        <span className="text-xl">Optimizer</span>
++                    </div>
++                </Link>
++            </div>
++
++            <div id="nav-items-container" className="flex flex-row items-center mx-auto">
++                <ul className="md:flex grow hidden items-center gap-5">
++                    {sections.map(({ id, label }) => (
++                        <li key={`li_${id}`}>
++                            <Link
++                                key="{id}"
++                                href={`/#${id}`}
++                                className={`hover:text-indigo-600 hover:underline hover:underline-offset-8 hover:decoration-3 ${
++                                    pathname == `/#${id}` || active == id
++                                        ? "text-indigo-600 underline underline-offset-8 decoration-3"
++                                        : ""
++                                }`}
++                            >
++                                {label}
++                            </Link>
++                        </li>
++                    ))}
++                </ul>
++            </div>
++
++            <div id="auth-container" className="hidden md:flex absolute right-4 top-1/2 -translate-y-1/2">
++                {session ? (
++                    <Dropdown
++                        trigger={
++                            <div className="flex flex-row items-center">
++                                <div className="flex flex-col text-end me-2">
++                                    <div className="font-bold text-md text-black">
++                                        {session.user.name}
++                                    </div>
++                                    <div className="text-neutral-500 text-xs font-normal uppercase">
++                                        Usuario
++                                    </div>
++                                </div>
++                                <Image
++                                    src={session.user.avatar}
++                                    alt="Perfil"
++                                    width={50}
++                                    height={50}
++                                    className="rounded-full border-3 border-indigo-600"
++                                />
++                            </div>
++                        }
++                    >
++                        <DropdownItem onClick={() => router.push("/dashboard")} className="cursor-pointer">
++                            Dashboard
++                        </DropdownItem>
++                        <DropdownItem onClick={() => router.push("/profile")} className="cursor-pointer">
++                            Mi Perfil
++                        </DropdownItem>
++                        <DropdownItem onClick={() => handleSignOut()} className="cursor-pointer">
++                            Cerrar Sesión
++                        </DropdownItem>
++                    </Dropdown>
++                ) : (
++                    <ul className="md:flex items-center gap-5">
++                        <li>
++                            <Link href="/login">Ingresar</Link>
++                        </li>
++                        <li>
++                            <Link href="/register">
++                                <Button variant="primary" className="font-bold">
++                                    Acceso Gratuito
++                                </Button>
++                            </Link>
++                        </li>
++                    </ul>
++                )}
++            </div>
++
++            <button
++                aria-label="menu-btn"
++                type="button"
++                className="menu-btn inline-block md:hidden active:scale-90 transition cursor-pointer"
++                onClick={() => setIsOpen(!isOpen)}
++            >
++                {isOpen ? <X /> : <Menu />}
++            </button>
++
++            <div
++                className={`mobile-menu absolute top-[70px] left-0 w-full bg-gradient-to-r from-indigo-600 to-violet-600 p-6 transition-full md:hidden ${
++                    isOpen ? "block" : "hidden"
++                }`}
++            >
++                <ul className="flex flex-col space-y-4 text-white text-lg">
++                    {sections.map(({ id, label }) => (
++                        <li key={`li_${id}`}>
++                            <Link
++                                key="{id}"
++                                href={`/#${id}`}
++                                className="ms-6 text-sm hover:text-white-600 hover:underline hover:underline-offset-8 hover:decoration-3"
++                            >
++                                {label}
++                            </Link>
++                        </li>
++                    ))}
++                </ul>
++
++                <div id="auth-container-mobile">
++                    {session ? (
++                        <div className="flex flex-col ms-6">
++                            <hr className="my-5 bg-white w-50 h-1 rounded opacity-40" />
++                            <div className="text-white hover:text-white-600 mb-5">
++                                Wenas, {session.user.name}
++                                <Button
++                                    variant="white"
++                                    onClick={() => handleSignOut()}
++                                    className="font-bold mt-5 rounded-lg"
++                                >
++                                    Cerrar Sesión
++                                </Button>
++                            </div>
++                        </div>
++                    ) : (
++                        <ul className="flex flex-col space-y-4 text-white text-lg mt-5">
++                            <li className="ms-6 text-sm hover:text-white-600 hover:underline hover:underline-offset-8 hover:decoration-3 text-white-600">
++                                <Link href="/login" className="font-bold">
++                                    Ingresar
++                                </Link>
++                            </li>
++                            <li className="ms-6 text-sm">
++                                <Link href="/register">
++                                    <Button variant="white" className="font-bold rounded-lg">
++                                        Acceso Gratuito
++                                    </Button>
++                                </Link>
++                            </li>
++                        </ul>
++                    )}
++                </div>
++            </div>
++        </nav>
++    );
++}
+\ No newline at end of file
+
+diff --git a/src/components/Select.tsx b/src/components/Select.tsx
+new file mode 100644
+index 0000000..66e0f94
+--- /dev/null
++++ b/src/components/Select.tsx
+@@ -0,0 +1,90 @@
++"use client";
++
++import {
++  forwardRef,
++  SelectHTMLAttributes,
++  ReactNode,
++} from "react";
++import { ChevronDown } from "lucide-react";
++import { cn } from "@/lib/utils";
++
++interface SelectProps
++  extends SelectHTMLAttributes<HTMLSelectElement> {
++  label?: string;
++  error?: string;
++  startAdornment?: ReactNode;
++}
++
++export const Select = forwardRef<HTMLSelectElement, SelectProps>(
++  (
++    {
++      label,
++      error,
++      className,
++      id,
++      startAdornment,
++      children,
++      ...props
++    },
++    ref
++  ) => {
++    return (
++      <div className="w-full">
++        {label && (
++          <label
++            htmlFor={id}
++            className="block font-bold text-gray-700 mb-1"
++          >
++            {label}
++          </label>
++        )}
++
++        <div
++          className={cn(
++            "flex w-full items-center rounded-xl border bg-neutral-50 transition",
++            "border-gray-300 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20",
++            "disabled:opacity-50",
++            error &&
++              "border-red-500 focus-within:border-red-500 focus-within:ring-red-500/20"
++          )}
++        >
++          {startAdornment && (
++            <div className="flex shrink-0 items-center pl-4 text-gray-500">
++              {startAdornment}
++            </div>
++          )}
++
++          <div className="relative flex-1 min-w-0">
++            <select
++              ref={ref}
++              id={id}
++              className={cn(
++                "w-full appearance-none bg-transparent px-4 py-3 pr-10 outline-none",
++                "disabled:cursor-not-allowed disabled:opacity-50",
++                className
++              )}
++              {...props}
++            >
++              {children}
++            </select>
++
++            <ChevronDown
++              size={20}
++              className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-gray-500"
++            />
++          </div>
++        </div>
++
++        {error && (
++          <p className="mt-1 text-xs text-red-500">
++            {error}
++          </p>
++        )}
++      </div>
++    );
++  }
++);
++
++Select.displayName = "Select";
++
++export default Select;
+
+diff --git a/src/components/ui/button.tsx b/src/components/ui/button.tsx
+new file mode 100644
+index 0000000..ed3ca9a
+--- /dev/null
++++ b/src/components/ui/button.tsx
+@@ -0,0 +1,57 @@
++import { Button as ButtonPrimitive } from "@base-ui/react/button"
++import { cva, type VariantProps } from "class-variance-authority"
++import { cn } from "cn"
++
++const buttonVariants = cva(
++  "group/button inline-flex shrink-0 items-center justify-center rounded-md border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
++  {
++    variants: {
++      variant: {
++        default: "bg-primary text-primary-foreground hover:bg-primary/80",
++        outline:
++          "border-border bg-background shadow-xs hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
++        secondary:
++          "bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
++        ghost:
++          "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
++        destructive:
++          "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
++        link: "text-primary underline-offset-4 hover:underline",
++      },
++      size: {
++        default:
++          "h-9 gap-1.5 px-2.5 in-data-[slot=button-group]:rounded-md has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
++        xs: "h-6 gap-1 rounded-[min(var(--radius-md),8px)] px-2 text-xs in-data-[slot=button-group]:rounded-md has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
++        sm: "h-8 gap-1 rounded-[min(var(--radius-md),10px)] px-2.5 in-data-[slot=button-group]:rounded-md has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5",
++        lg: "h-10 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
++        icon: "size-9",
++        "icon-xs":
++          "size-6 rounded-[min(var(--radius-md),8px)] in-data-[slot=button-group]:rounded-md [&_svg:not([class*='size-'])]:size-3",
++        "icon-sm":
++          "size-8 rounded-[min(var(--radius-md),10px)] in-data-[slot=button-group]:rounded-md",
++        "icon-lg": "size-10",
++      },
++    },
++    defaultVariants: {
++      variant: "default",
++      size: "default",
++    },
++  }
++)
++
++function Button({
++  className,
++  variant = "default",
++  size = "default",
++  ...props
++}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
++  return (
++    <ButtonPrimitive
++      data-slot="button"
++      className={cn(buttonVariants({ variant, size, className }))}
++      {...props}
++    />
++  )
++}
++
++export { Button, buttonVariants }
+
+diff --git a/src/components/ui/sonner.tsx b/src/components/ui/sonner.tsx
+new file mode 100644
+index 0000000..d57ccfa
+--- /dev/null
++++ b/src/components/ui/sonner.tsx
+@@ -0,0 +1,58 @@
++"use client";
++
++import { useTheme } from "next-themes";
++import { Toaster as Sonner, type ToasterProps } from "sonner";
++import {
++    CircleCheckIcon,
++    InfoIcon,
++    TriangleAlertIcon,
++    OctagonXIcon,
++    Loader2Icon,
++} from "lucide-react";
++
++const Toaster = ({ ...props }: ToasterProps) => {
++    const { theme = "system" } = useTheme();
++
++    return (
++        <Sonner
++            theme={theme as ToasterProps["theme"]}
++            richColors
++            className="toaster group"
++            position="top-right"
++            offset={{ top: "100px" }}
++            duration={10000}
++            icons={{
++                success: <CircleCheckIcon className="size-4" />,
++                info: <InfoIcon className="size-4" />,
++                warning: <TriangleAlertIcon className="size-4" />,
++                error: <OctagonXIcon className="size-4" />,
++                loading: <Loader2Icon className="size-4 animate-spin" />,
++            }}
++            style={
++                {
++                    "--normal-bg": "var(--popover)",
++                    "--normal-text": "var(--popover-foreground)",
++                    "--normal-border": "var(--border)",
++                    "--border-radius": "var(--radius)",
++
++                    "--success-bg": "#16a34a",
++                    "--success-text": "#ffffff",
++                    "--success-border": "#15803d",
++                    "--success-radius": "var(--radius)",
++
++                    "--error-bg": "#dc2626",
++                    "--error-text": "#ffffff",
++                    "--error-border": "#b91c1c",
++                } as React.CSSProperties
++            }
++            toastOptions={{
++                classNames: {
++                    toast: "cn-toast",
++                },
++            }}
++            {...props}
++        />
++    );
++};
++
++export { Toaster };
+
+diff --git a/src/lib/utils.ts b/src/lib/utils.ts
+new file mode 100644
+index 0000000..f815ded
+--- /dev/null
++++ b/src/lib/utils.ts
+@@ -0,0 +1 @@
++export { cn } from "cn"
