@@ -2,14 +2,9 @@ import { createAuthClient } from 'better-auth/react'
 import { customSessionClient } from 'better-auth/client/plugins'
 import { auth } from '@/lib/auth'
 
+// Sin baseURL, el cliente usa el mismo origen bajo /api/auth (no depende de
+// NEXT_PUBLIC_APP_URL, que no está definida en este proyecto).
 export const authClient = createAuthClient({
-  baseURL: process.env.NEXT_PUBLIC_APP_URL!,
-  session:{
-    cookieCache:{
-      enabled: true,
-      maxAge: 60 * 5,
-    }
-  },
   plugins: [
     customSessionClient<typeof auth>()
   ]

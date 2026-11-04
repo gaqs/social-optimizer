@@ -8,15 +8,12 @@ export const postSchema = z.object({
     platforms: z
         .array(z.enum(["X", "Facebook", "Instagram", "Tiktok"]))
         .min(1, "Selecciona al menos una red social"),
-    scheduleEnabled: z
-        .string()
-        .transform((v) => v === "true")
-        .default(false),
+    mode: z.enum(["now", "schedule"]),
     scheduledDate: z.string().optional(),
     scheduledTime: z.string().optional(),
 })
 .superRefine((data, ctx) => {
-    if (data.scheduleEnabled) {
+    if (data.mode === "schedule") {
         if (!data.scheduledDate) {
             ctx.addIssue({ code: "custom", message: "Selecciona una fecha", path: ["scheduledDate"] });
         }

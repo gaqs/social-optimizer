@@ -3,11 +3,21 @@
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
+import type {
+  EventClickArg,
+  EventContentArg,
+  EventHoveringArg,
+} from "@fullcalendar/core";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import SideNav from "@/components/Sidenav";
 import Card from "@/components/Card";
+import Button from "@/components/Button";
 import Charts from "./_sections/Charts";
-import { useRef } from "react";
-import { TriangleAlert, BellRing } from "lucide-react";
+import { TriangleAlert, BellRing, Pencil } from "lucide-react";
+import { firstImageMedia } from "@/lib/media";
+import { PLATFORMS } from "@/lib/platforms";
 
 interface CalendarEvent {
   id: string;
@@ -25,68 +35,113 @@ interface CalendarViewProps {
   events: CalendarEvent[];
 }
 
-export default function CalendarView({ events }: CalendarViewProps) {
-  const hoverTooltipRef = useRef<HTMLDivElement | null>(null);
-  const pinnedTooltipRef = useRef<HTMLDivElement | null>(null);
+interface TooltipData {
+  id: string;
+  description: string;
+  platforms: string[];
+  media: string;
+  status: string;
+  start: Date | null;
+  x: number;
+  y: number;
+  pinned: boolean;
+}
 
-  const createTooltip = (info: any) => {
-    const tooltip = document.createElement("div");
-    tooltip.className = "calendar-tooltip";
-    tooltip.innerHTML = `
-        <div class="flex flex-col">
-            <strong>${info.event.extendedProps.platforms?.join(", ") || info.event.title}</strong><br>
-            <img src="${info.event.extendedProps.media || ""}" alt="Media" class="tooltip-media" width="100"/>
-            <span>${info.event.extendedProps.status || ""}</span>
-        </div>
-        "${info.event.extendedProps.description || "No description"}"<br>
-        Fecha: ${info.event.start.toLocaleString()}
-    `;
-    document.body.appendChild(tooltip);
-    tooltip.style.left = info.jsEvent.pageX + 10 + "px";
-    tooltip.style.top = info.jsEvent.pageY + 10 + "px";
-    return tooltip;
-  };
+const TOOLTIP_WIDTH = 320;
+const TOOLTIP_HEIGHT = 380;
 
-  const renderEventContent = (eventInfo: any) => {
-    const { media, platforms, status } = eventInfo.event.extendedProps;
-
-    return (
-        <div className="flex flex-col items-center gap-1 overflow-hidden p-0.5 w-full">
-        {media && (
-            <img src={media} alt="post" className="w-12 h-12 rounded object-cover shrink-0" />
-        )}
-        <span className="text-xs truncate">
-            {platforms?.[0]}
-            {platforms?.length > 1 ? ` +${platforms.length - 1}` : ""}
-        </span>
-        </div>
-    );
+const STATUS_LABELS: Record<string, string> = {
+  draft: "Borrador",
+  scheduled: "Programado",
+  published: "Publicado",
+  failed: "Falló",
 };
 
-  const removeTooltip = (ref: any) => {
-    if (ref.current) {
-      ref.current.remove();
-      ref.current = null;
-    }
+export default function CalendarView({ events }: CalendarViewProps) {
+  const router = useRouter();
+  const [tooltip, setTooltip] = useState<TooltipData | null>(null);
+  const tooltipRef = useRef<HTMLDivElement | null>(null);
+
+  // Cierra el tooltip al hacer click fuera, con Escape o al desmontar (navegación)
+  useEffect(() => {
+    if (!tooltip) return;
+
+    const onPointerDown = (event: PointerEvent) => {
+      if (tooltipRef.current?.contains(event.target as Node)) return;
+      setTooltip(null);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setTooltip(null);
+    };
+
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [tooltip]);
+
+  const buildTooltip = (
+    info: EventClickArg | EventHoveringArg,
+    pinned: boolean,
+  ): TooltipData => {
+    const { clientX, clientY } = info.jsEvent;
+    return {
+      id: info.event.id,
+      description: info.event.extendedProps.description,
+      platforms: info.event.extendedProps.platforms,
+      media: info.event.extendedProps.media,
+      status: info.event.extendedProps.status,
+      start: info.event.start,
+      pinned,
+      x: Math.min(clientX + 12, window.innerWidth - TOOLTIP_WIDTH - 12),
+      y: Math.min(clientY + 12, window.innerHeight - TOOLTIP_HEIGHT),
+    };
   };
 
-  const handleEventMouseEnter = (info: any) => {
-    if (pinnedTooltipRef.current) return;
-    hoverTooltipRef.current = createTooltip(info);
+  const renderEventContent = (eventInfo: EventContentArg) => {
+    const { media, platforms } = eventInfo.event.extendedProps;
+    const cover = firstImageMedia(media || "");
+
+    return (
+      <div className="flex flex-col items-center gap-1 overflow-hidden p-0.5 w-full">
+        {cover && (
+          <Image
+            src={cover}
+            alt="post"
+            width={48}
+            height={48}
+            className="w-12 h-12 rounded object-cover shrink-0"
+          />
+        )}
+        <span className="text-xs truncate">
+          {platforms?.[0]}
+          {platforms?.length > 1 ? ` +${platforms.length - 1}` : ""}
+        </span>
+      </div>
+    );
+  };
+
+  const handleEventMouseEnter = (info: EventHoveringArg) => {
+    if (tooltip?.pinned) return;
+    setTooltip(buildTooltip(info, false));
   };
 
   const handleEventMouseLeave = () => {
-    removeTooltip(hoverTooltipRef);
+    setTooltip((prev) => (prev?.pinned ? prev : null));
   };
 
-  const handleDateClick = (info: any) => {
-    if (pinnedTooltipRef.current) {
-      removeTooltip(pinnedTooltipRef);
-      return;
-    }
-    removeTooltip(hoverTooltipRef);
-    pinnedTooltipRef.current = createTooltip(info);
+  const handleEventClick = (info: EventClickArg) => {
+    info.jsEvent.preventDefault();
+    setTooltip((prev) =>
+      prev?.pinned && prev.id === info.event.id
+        ? null
+        : buildTooltip(info, true),
+    );
   };
+
+  const cover = tooltip ? firstImageMedia(tooltip.media || "") : null;
 
   return (
     <main className="mx-auto bg-indigo-10 flex bg-slate-50">
@@ -110,7 +165,7 @@ export default function CalendarView({ events }: CalendarViewProps) {
             eventContent={renderEventContent}
             eventMouseEnter={handleEventMouseEnter}
             eventMouseLeave={handleEventMouseLeave}
-            eventClick={handleDateClick}
+            eventClick={handleEventClick}
             slotDuration="00:30:00"
             slotLabelFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
             slotMinTime="06:00:00"
@@ -146,6 +201,62 @@ export default function CalendarView({ events }: CalendarViewProps) {
           </Card>
         </div>
       </section>
+
+      {tooltip && (
+        <div
+          ref={tooltipRef}
+          role="dialog"
+          aria-label="Previsualización del post"
+          className="fixed z-50 w-80 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl"
+          style={{ left: tooltip.x, top: tooltip.y }}
+        >
+          <div className="flex items-center gap-2 border-b border-neutral-100 p-3">
+            {tooltip.platforms.map((p) => {
+              const platform = PLATFORMS.find((item) => item.id === p);
+              if (!platform) return null;
+              return (
+                <Image
+                  key={p}
+                  src={platform.icon}
+                  alt={platform.label}
+                  width={18}
+                  height={18}
+                />
+              );
+            })}
+            <span className="ml-auto rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-bold text-indigo-600">
+              {STATUS_LABELS[tooltip.status] ?? tooltip.status}
+            </span>
+          </div>
+
+          {cover && (
+            <Image
+              src={cover}
+              alt="Media del post"
+              width={TOOLTIP_WIDTH}
+              height={160}
+              className="h-40 w-full object-cover"
+            />
+          )}
+
+          <div className="flex flex-col gap-2 p-3">
+            <p className="line-clamp-3 text-sm text-neutral-700">
+              {tooltip.description || "Sin contenido"}
+            </p>
+            <div className="text-xs text-neutral-400">
+              {tooltip.start?.toLocaleString("es-CL") ?? "Sin fecha"}
+            </div>
+            <Button
+              variant="primary"
+              className="w-full text-sm font-bold"
+              onClick={() => router.push(`/post?edit=${tooltip.id}`)}
+            >
+              <Pencil size={14} />
+              Editar post
+            </Button>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

@@ -6,13 +6,24 @@ import {
     type ExportOptions,
     type ExportResult,
     type LabelOverrides,
+    type ToolInput,
 } from "@image-ultra/react";
 import "@image-ultra/react/styles.css";
-import { X } from "lucide-react";
+import { XIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+    Dialog,
+    DialogClose,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 
 interface ImageEditorModalProps {
     src: string;
     aspect: number;
+    // Herramientas visibles del editor; si se omite quedan todas las nativas
+    tools?: readonly ToolInput[];
     exportOptions: ExportOptions; // pásalo como constante fuera del componente
     labels: LabelOverrides;       // idem
     title?: string;
@@ -25,6 +36,7 @@ interface ImageEditorModalProps {
 export default function ImageEditorModal({
     src,
     aspect,
+    tools,
     exportOptions,
     labels,
     title = "Recortar Imagen",
@@ -39,25 +51,37 @@ export default function ImageEditorModal({
     );
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-            <div className="bg-white rounded-2xl max-w-3xl w-full p-6 relative flex flex-col gap-4 shadow-2xl">
-                <div className="flex justify-between items-center">
-                    <h5 className="font-bold text-lg text-gray-800">{title}</h5>
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        disabled={busy}
-                        className="text-gray-400 hover:text-gray-600 disabled:opacity-40"
-                    >
-                        <X size={20} />
-                    </button>
-                </div>
+        <Dialog
+            open
+            onOpenChange={(open) => {
+                // Mientras hay una operación en curso no se cierra (Esc ni clic fuera)
+                if (!open && !busy) onClose();
+            }}
+        >
+            <DialogContent className="sm:max-w-3xl" showCloseButton={false}>
+                <DialogHeader>
+                    <DialogTitle>{title}</DialogTitle>
+                </DialogHeader>
+
+                <DialogClose
+                    disabled={busy}
+                    render={
+                        <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            className="absolute top-4 right-4"
+                        />
+                    }
+                >
+                    <XIcon />
+                    <span className="sr-only">Cerrar</span>
+                </DialogClose>
 
                 <div className="relative w-full h-[560px] rounded-xl overflow-hidden">
                     <ImageEditor
                         src={src}
                         initialState={initialState}
-                        tools={["adjust"]}
+                        tools={tools}
                         theme="light"
                         themeOverrides={{ accent: "#4f46e5" }}
                         labels={labels}
@@ -72,7 +96,7 @@ export default function ImageEditorModal({
                         </div>
                     )}
                 </div>
-            </div>
-        </div>
+            </DialogContent>
+        </Dialog>
     );
 }

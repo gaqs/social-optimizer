@@ -81,11 +81,14 @@ export default function Social() {
 
                                     {error && <div className="text-red-500 mb-5">{error}</div>}
 
-                                    <Input label="Correo electrónico" type="email" name="email" placeholder="tucorreo@correo.com" className="mb-5" required/>
-
-                                    <Input label="Contraseña" type="password" name="password" placeholder="" required/>
-
-                                    <Button type="submit" className="mt-8 mb-2 w-full font-bold" variant={currentContent.button} isLoading={loading}>Autorizar</Button>
+                                    <div className="mb-5">
+                                        <Input label="Correo electrónico" type="email" name="email" placeholder="tucorreo@correo.com" className="" required/>
+                                    </div>
+                                    <div className="mb-5">
+                                        <Input label="Contraseña" type="password" name="password" placeholder="" className="" required/>
+                                    </div>
+                                
+                                    <Button type="submit" className="mt-8 mb-3 w-full font-bold" variant={currentContent.button} isLoading={loading}>Autorizar</Button>
                                     <Button type="submit" className="w-full font-bold" variant="white">Cancelar</Button>
 
                                     <div className="text-sm text-neutral-500 flex mt-10 gap-2">

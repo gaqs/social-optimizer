@@ -109,7 +109,7 @@ def exportar_diff_locales_por_fecha(
 
 
 if __name__ == "__main__":
-    FECHA_INICIO = "2026-09-01"
-    FECHA_FIN = "2026-09-28"
+    FECHA_INICIO = "2026-10-01"
+    FECHA_FIN = "2026-10-26"
 
     exportar_diff_locales_por_fecha(FECHA_INICIO, FECHA_FIN, "cambios_no_confirmados.txt")

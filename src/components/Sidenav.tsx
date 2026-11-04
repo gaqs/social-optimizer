@@ -13,6 +13,7 @@ import {
   CopyPlus,
   User,
   Unplug,
+  Newspaper,
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -27,6 +28,11 @@ const navItems: NavItem[] = [
     label: "Dashboard",
     href: "/dashboard",
     icon: Home,
+  },
+  {
+    label: "Publicaciones",
+    href: "/publications",
+    icon: Newspaper,
   },
   {
     label: "Calendario",

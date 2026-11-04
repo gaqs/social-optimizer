@@ -43,7 +43,9 @@ export async function submitLogin(
             body: {
                 email,
                 password: pwd,
-                rememberMe: true,
+                // rememberMe queda en false: la cookie muere al cerrar el
+                // navegador, así la sesión no queda abierta indefinidamente.
+                rememberMe: false,
             },
             headers: await headers(),
         });

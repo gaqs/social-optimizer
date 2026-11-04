@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
+import { toast } from "sonner";
 
 import { useEffect, useState } from "react";
 import { SmilePlus, Menu, X } from "lucide-react";
@@ -59,13 +60,17 @@ export default function NavbarClient({ session }: NavbarClientProps) {
     }, []);
 
     const handleSignOut = async () => {
-        await authClient.signOut();
-        router.push("/login");
-        router.refresh(); 
+        const { error } = await authClient.signOut();
+        if (error) {
+            toast.error(error.message ?? "No se pudo cerrar la sesión");
+            return;
+        }
+        // Navegación completa: descarta cachés del router y estado de sesión
+        window.location.assign("/login");
     };
 
     return (
-        <nav className="fixed flex h-[80px] w-full px-4 md:px-8 lg:px-8 xl:px-8 text-gray-500 bg-neutral-50 z-90 shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
+        <nav className="fixed flex h-[80px] w-full px-4 md:px-8 lg:px-8 xl:px-8 text-gray-500 bg-neutral-50 z-[60] shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
             <div id="logo-container" className="absolute left-4 top-1/2 -translate-y-1/2">
                 <Link href="/" className="flex flex-row gap-2 items-center text-black">
                     <div>
@@ -112,7 +117,7 @@ export default function NavbarClient({ session }: NavbarClientProps) {
                                     </div>
                                 </div>
                                 <Image
-                                    src={session.user.avatar}
+                                    src={session.user.avatar ?? "/img/profile.png"}
                                     alt="Perfil"
                                     width={50}
                                     height={50}

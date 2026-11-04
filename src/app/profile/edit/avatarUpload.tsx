@@ -32,6 +32,7 @@ export default function AvatarUpload({
     currentAvatar = "/img/profile.png",
     onUploadAction,
 }: AvatarUploadProps) {
+
     const picker = useImagePicker();
     const { close } = picker;
 
@@ -53,6 +54,7 @@ export default function AvatarUpload({
         };
     }, [avatarPreview]);
 
+    
     const handleSave = ({ blob }: ExportResult) => {
         const formData = new FormData();
         formData.append("avatar", blob, "avatar.jpg");
@@ -86,6 +88,7 @@ export default function AvatarUpload({
                 <ImageEditorModal
                     src={picker.src}
                     aspect={1}
+                    tools={["adjust"]}
                     exportOptions={EXPORT_OPTIONS}
                     labels={LABELS}
                     busy={isUploading}
@@ -96,4 +99,5 @@ export default function AvatarUpload({
             )}
         </>
     );
+
 }
